@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.targapps.xyz/schemas/chroma/chroma.schema.json",
+  "name": "chroma-static-app",
+  "mode": "static",
+  "plugins": ["chroma-fs", "chroma-router", "chroma-style"],
+  "entry": "index.html",
+  "outDir": "dist",
+  "engine": { "vendorDir": "pkg", "rebuildWasm": false },
+  "build": { "scripts": ["index.js", "plugins/loader.js"], "styles": [], "minify": true, "sourcemap": false },
+  "dev": { "port": 4173, "desktop": false }
+}

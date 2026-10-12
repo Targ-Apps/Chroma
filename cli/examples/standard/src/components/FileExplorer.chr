@@ -1,0 +1,185 @@
+import { hookState, useEffect, e } from "../../pkg/chroma.js";
+import { getFs } from "../storage.chr";
+
+export function FileExplorer() {
+    const [currentPath, setCurrentPath] = hookState("");
+    const [entries, setEntries] = hookState([]);
+    const [selectedPath, setSelectedPath] = hookState("");
+    const [preview, setPreview] = hookState("");
+    const [filename, setFilename] = hookState("notes/demo.txt");
+    const [content, setContent] = hookState("Hello from Chroma-Fs!");
+    const [status, setStatus] = hookState("");
+    const [loading, setLoading] = hookState(false);
+
+    async function refresh() {
+        setLoading(true);
+        setStatus("");
+        try {
+            const fs = await getFs();
+            const list = await fs.list(currentPath());
+            setEntries(list);
+            setStatus(`Listed ${list.length} item(s) in "${currentPath() || "/"}"`);
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : String(error));
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function openEntry(entry) {
+        if (entry.kind === "directory") {
+            setCurrentPath(entry.path);
+            setSelectedPath("");
+            setPreview("");
+            return;
+        }
+
+        setSelectedPath(entry.path);
+        setLoading(true);
+        setStatus("");
+        try {
+            const fs = await getFs();
+            const text = await fs.readText(entry.path);
+            setPreview(text);
+            setStatus(`Read ${entry.path} (${text.length} chars)`);
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : String(error));
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function writeFile() {
+        setLoading(true);
+        setStatus("");
+        try {
+            const fs = await getFs();
+            const path = filename().trim();
+            if (!path) {
+                setStatus("Enter a file path.");
+                return;
+            }
+            await fs.writeFile(path, content());
+            setStatus(`Wrote ${path}`);
+            if (path.includes("/")) {
+                const parent = path.slice(0, path.lastIndexOf("/"));
+                setCurrentPath(parent);
+            }
+            await refresh();
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : String(error));
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function deleteSelected() {
+        const path = selectedPath();
+        if (!path) {
+            setStatus("Select a file to delete.");
+            return;
+        }
+
+        setLoading(true);
+        setStatus("");
+        try {
+            const fs = await getFs();
+            await fs.delete(path);
+            setSelectedPath("");
+            setPreview("");
+            setStatus(`Deleted ${path}`);
+            await refresh();
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : String(error));
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function goUp() {
+        const path = currentPath();
+        if (!path) return;
+        const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+        setCurrentPath(parent);
+        setSelectedPath("");
+        setPreview("");
+    }
+
+    useEffect(() => {
+        refresh();
+    }, [currentPath]);
+
+    return e(
+        "div",
+        null,
+        e(
+            "section",
+            null,
+            e("h2", null, "Browse"),
+            e(
+                "div",
+                { class: "row" },
+                currentPath()
+                    ? e("button", { class: "secondary", onClick: () => goUp() }, "↑ Up")
+                    : null,
+                e("button", { class: "secondary", onClick: () => refresh() }, "Refresh"),
+                e("span", { class: "status" }, () => `Path: /${currentPath()}`),
+            ),
+            loading()
+                ? e("p", { class: "status" }, "Loading…")
+                : e(
+                      "ul",
+                      { class: "file-list" },
+                      entries().map((entry) =>
+                          e(
+                              "li",
+                              null,
+                              e("span", { class: "kind" }, entry.kind),
+                              e(
+                                  "button",
+                                  {
+                                      class: "path-btn",
+                                      onClick: () => openEntry(entry),
+                                  },
+                                  entry.name,
+                              ),
+                          ),
+                      ),
+                  ),
+        ),
+        e(
+            "section",
+            null,
+            e("h2", null, "Preview"),
+            selectedPath()
+                ? e("p", { class: "status" }, selectedPath)
+                : e("p", { class: "status" }, "Select a file to preview"),
+            e("div", { class: "preview" }, () => preview() || "—"),
+            selectedPath()
+                ? e(
+                      "div",
+                      { class: "row", style: { marginTop: "0.5rem" } },
+                      e("button", { class: "secondary", onClick: () => deleteSelected() }, "Delete file"),
+                  )
+                : null,
+        ),
+        e(
+            "section",
+            null,
+            e("h2", null, "Write file"),
+            e("label", null, "Path (relative to storage root)"),
+            e("input", {
+                type: "text",
+                value: filename,
+                onInput: (event) => setFilename(event.target.value),
+            }),
+            e("label", null, "Content"),
+            e("textarea", {
+                value: content,
+                onInput: (event) => setContent(event.target.value),
+            }),
+            e("button", { onClick: () => writeFile() }, "Save"),
+        ),
+        status() ? e("p", { class: "status" }, status) : null,
+    );
+}

@@ -1,0 +1,9 @@
+{
+  "storage": {
+    "backend": "indexeddb",
+    "indexedDb": {
+      "dbName": "chroma-app",
+      "storeName": "files"
+    }
+  }
+}

@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Targ Apps — Sistema de Gestión</title>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap");
+            :root {
+                --bg: #0f1117;
+                --bg2: #161b27;
+                --bg3: #1e2536;
+                --border: #2a3146;
+                --accent: #4f8ef7;
+                --accent2: #38e0a0;
+                --warn: #f5a623;
+                --danger: #f06060;
+                --text: #e8eaf0;
+                --text2: #8890a8;
+                --text3: #555e78;
+                --card: #1a2133;
+                --sw: 200px;
+            }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                font-family: "DM Sans", sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                font-size: 14px;
+            }
+            .login-screen {
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--bg);
+                background-image:
+                    radial-gradient(
+                        ellipse at 20% 50%,
+                        #1a2a4a 0%,
+                        transparent 60%
+                    ),
+                    radial-gradient(
+                        ellipse at 80% 20%,
+                        #0d2a1f 0%,
+                        transparent 50%
+                    );
+            }
+            .login-card {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 40px 36px;
+                width: 360px;
+            }
+            .login-logo {
+                font-size: 22px;
+                font-weight: 600;
+                margin-bottom: 4px;
+            }
+            .login-logo span {
+                color: var(--accent);
+            }
+            .login-sub {
+                font-size: 12px;
+                color: var(--text2);
+                margin-bottom: 28px;
+            }
+            .field {
+                margin-bottom: 14px;
+            }
+            .field label {
+                display: block;
+                font-size: 11px;
+                font-weight: 500;
+                color: var(--text2);
+                margin-bottom: 5px;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+            }
+            .field input,
+            .field select,
+            .field textarea {
+                width: 100%;
+                padding: 9px 12px;
+                background: var(--bg2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text);
+                font-family: inherit;
+                font-size: 13px;
+                outline: none;
+                transition: border-color 0.15s;
+            }
+            .field input:focus,
+            .field select:focus,
+            .field textarea:focus {
+                border-color: var(--accent);
+            }
+            .field textarea {
+                resize: vertical;
+                min-height: 65px;
+            }
+            select option {
+                background: var(--bg2);
+            }
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                border: none;
+                transition:
+                    opacity 0.15s,
+                    transform 0.1s;
+            }
+            .btn:hover {
+                opacity: 0.85;
+                transform: translateY(-1px);
+            }
+            .btn:active {
+                transform: translateY(0);
+            }
+            .btn-primary {
+                background: var(--accent);
+                color: #fff;
+            }
+            .btn-secondary {
+                background: var(--bg3);
+                color: var(--text);
+                border: 1px solid var(--border);
+            }
+            .btn-danger {
+                background: #2a1515;
+                color: var(--danger);
+                border: 1px solid #3a2020;
+            }
+            .btn-sm {
+                padding: 5px 11px;
+                font-size: 12px;
+            }
+            .btn-full {
+                width: 100%;
+                justify-content: center;
+            }
+            .app-layout {
+                display: flex;
+                min-height: 100vh;
+            }
+            .sidebar {
+                width: var(--sw);
+                background: var(--bg2);
+                border-right: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                position: fixed;
+                top: 0;
+                bottom: 0;
+            }
+            .sidebar-logo {
+                padding: 18px 16px 14px;
+                font-size: 16px;
+                font-weight: 600;
+                border-bottom: 1px solid var(--border);
+            }
+            .sidebar-logo span {
+                color: var(--accent);
+            }
+            .nav {
+                flex: 1;
+                padding: 10px 8px;
+                overflow-y: auto;
+            }
+            .nav-item {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 8px 10px;
+                border-radius: 8px;
+                cursor: pointer;
+                color: var(--text2);
+                font-size: 13px;
+                margin-bottom: 2px;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+            }
+            .nav-item:hover {
+                background: var(--bg3);
+                color: var(--text);
+            }
+            .nav-item.active {
+                background: #1a2a4a;
+                color: var(--accent);
+                font-weight: 500;
+            }
+            .nav-icon {
+                font-size: 15px;
+                width: 18px;
+                text-align: center;
+            }
+            .sidebar-footer {
+                padding: 12px 16px;
+                border-top: 1px solid var(--border);
+            }
+            .user-chip {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .avatar {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: var(--accent);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .user-name {
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .user-role {
+                font-size: 11px;
+                color: var(--text3);
+            }
+            .main {
+                margin-left: var(--sw);
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+            }
+            .topbar {
+                padding: 14px 24px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: var(--bg);
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+            .page-title {
+                font-size: 17px;
+                font-weight: 600;
+            }
+            .page-content {
+                padding: 22px;
+                flex: 1;
+                overflow-y: auto;
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                margin-bottom: 22px;
+            }
+            .stat-card {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 16px 18px;
+            }
+            .stat-label {
+                font-size: 11px;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                margin-bottom: 6px;
+            }
+            .stat-value {
+                font-size: 26px;
+                font-weight: 600;
+                font-family: "DM Mono", monospace;
+            }
+            .blue {
+                color: var(--accent);
+            }
+            .green {
+                color: var(--accent2);
+            }
+            .warn {
+                color: var(--warn);
+            }
+            .danger {
+                color: var(--danger);
+            }
+            .table-wrap {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                overflow: hidden;
+                margin-bottom: 22px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            thead th {
+                font-size: 11px;
+                font-weight: 500;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                padding: 11px 14px;
+                text-align: left;
+                border-bottom: 1px solid var(--border);
+            }
+            tbody td {
+                padding: 11px 14px;
+                border-bottom: 1px solid var(--border);
+                font-size: 13px;
+            }
+            tbody tr:last-child td {
+                border-bottom: none;
+            }
+            tbody tr:hover td {
+                background: rgba(255, 255, 255, 0.02);
+            }
+            .badge {
+                display: inline-block;
+                padding: 3px 10px;
+                border-radius: 99px;
+                font-size: 11px;
+                font-weight: 500;
+            }
+            .badge-blue {
+                background: #162440;
+                color: var(--accent);
+            }
+            .badge-green {
+                background: #0e2620;
+                color: var(--accent2);
+            }
+            .badge-gray {
+                background: var(--bg3);
+                color: var(--text2);
+            }
+            .sec-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 14px;
+            }
+            .sec-title {
+                font-size: 12px;
+                font-weight: 500;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+            .modal-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.65);
+                align-items: center;
+                justify-content: center;
+                z-index: 100;
+            }
+            .modal-overlay.open {
+                display: flex;
+            }
+            .modal {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 26px;
+                width: 500px;
+                max-width: 95vw;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-title {
+                font-size: 15px;
+                font-weight: 600;
+                margin-bottom: 18px;
+            }
+            .modal-footer {
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+                margin-top: 18px;
+            }
+            .form-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .confirm-toast {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                background: var(--accent2);
+                color: #0a2018;
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 500;
+                z-index: 200;
+                opacity: 0;
+                transition: opacity 0.2s;
+                pointer-events: none;
+            }
+            .confirm-toast.show {
+                opacity: 1;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 32px;
+                color: var(--text3);
+                font-size: 13px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app"></div>
+        <div class="confirm-toast" id="toast"></div>
+
+        <script type="module">
+            import { hookState, render, e, Fragment, Show, For, useEffect } from "../pkg/chroma.js";
+
+            const USERS = {
+                "tomas@targapps.xyz": {
+                    pass: "12345678",
+                    nombre: "Tomás Ávila",
+                    rol: "Director",
+                    avatar: "TA",
+                },
+                "juan@targapps.xyz": {
+                    pass: "12345678",
+                    nombre: "Juan Cáceres",
+                    rol: "Desarrollador",
+                    avatar: "JC",
+                },
+            };
+
+            function defaultState() {
+                return {
+                    clientes: [
+                        {
+                            id: 1,
+                            nombre: "Empresa ABC",
+                            email: "contacto@abc.com",
+                            tel: "+54 11 5555-0001",
+                            alta: "12/03/2026",
+                        },
+                        {
+                            id: 2,
+                            nombre: "Startup XYZ",
+                            email: "info@xyz.io",
+                            tel: "+54 11 5555-0002",
+                            alta: "28/03/2026",
+                        },
+                    ],
+                    proyectos: [
+                        {
+                            id: 1,
+                            nombre: "Sitio web corporativo",
+                            clienteId: 1,
+                            tipo: "Desarrollo web",
+                            dev: "Juan Cáceres",
+                            entrega: "30/06/2026",
+                            estado: "En desarrollo",
+                            presup: 3000,
+                        },
+                        {
+                            id: 2,
+                            nombre: "App móvil Android",
+                            clienteId: 2,
+                            tipo: "App móvil",
+                            dev: "Jerónimo Blas",
+                            entrega: "15/07/2026",
+                            estado: "En revisión",
+                            presup: 4500,
+                        },
+                    ],
+                    nextId: { c: 3, p: 3 },
+                };
+            }
+
+            // ═══════════════════════════════
+            // FUNCIONES DE LOCALSTORAGE
+            // ═══════════════════════════════
+
+            /** Carga el estado desde localStorage o devuelve el estado por defecto */
+            function loadState() {
+                try {
+                    const saved = localStorage.getItem("targapps_state");
+                    return saved ? JSON.parse(saved) : defaultState();
+                } catch (e) {
+                    console.error("Error al cargar estado:", e);
+                    return defaultState();
+                }
+            }
+
+            /** Guarda el estado en localStorage */
+            function saveState(state) {
+                try {
+                    localStorage.setItem(
+                        "targapps_state",
+                        JSON.stringify(state),
+                    );
+                } catch (e) {
+                    console.error("Error al guardar estado:", e);
+                }
+            }
+
+            /** Actualiza una propiedad del estado y la guarda */
+            function updateState(stateFn, updates) {
+                const current = stateFn();
+                const updated = { ...current, ...updates };
+                saveState(updated);
+                return updated;
+            }
+
+            function showToast(msg) {
+                const t = document.getElementById("toast");
+                t.textContent = msg;
+                t.classList.add("show");
+                setTimeout(() => t.classList.remove("show"), 2200);
+            }
+
+            function App() {
+                const [state, setState] = hookState(loadState());
+                const [currentUser, setCurrentUser] = hookState(null);
+                const [currentView, setCurrentView] = hookState("dashboard");
+                const [modalOpen, setModalOpen] = hookState(null);
+                const [editId, setEditId] = hookState(null);
+                const [formData, setFormData] = hookState({});
+
+                // Guardar estado cuando cambie (debounce)
+                useEffect(() => {
+                    const timer = setTimeout(() => saveState(state()), 500);
+                    return () => clearTimeout(timer);
+                }, [state]);
+
+                const getCli = (id) =>
+                    state().clientes.find((c) => c.id === id) || {};
+
+                function LoginScreen() {
+                    const [user, setUser] = hookState("tomas@targapps.xyz");
+                    const [pass, setPass] = hookState("12345678");
+                    const [err, setErr] = hookState("");
+
+                    return e(
+                        "div",
+                        { class: "login-screen" },
+                        e(
+                            "div",
+                            { class: "login-card" },
+                            e(
+                                "div",
+                                { class: "login-logo" },
+                                "Targ",
+                                e("span", null, "Apps"),
+                            ),
+                            e(
+                                "div",
+                                { class: "login-sub" },
+                                "Sistema de gestión interno — 1C 2026",
+                            ),
+                            e(
+                                "div",
+                                { class: "field" },
+                                e("label", null, "Usuario"),
+                                e("input", {
+                                    type: "text",
+                                    value: user,
+                                    onInput: (ev) => setUser(ev.target.value),
+                                }),
+                            ),
+                            e(
+                                "div",
+                                { class: "field" },
+                                e("label", null, "Contraseña"),
+                                e("input", {
+                                    type: "password",
+                                    value: pass,
+                                    onInput: (ev) => setPass(ev.target.value),
+                                }),
+                            ),
+                            e(
+                                "button",
+                                {
+                                    class: "btn btn-primary btn-full",
+                                    style: "margin-bottom: 10px",
+                                    onClick: () => {
+                                        const usr = USERS[user()];
+                                        if (!usr || usr.pass !== pass()) {
+                                            setErr(
+                                                "Usuario o contraseña incorrectos",
+                                            );
+                                        } else {
+                                            setCurrentUser(usr);
+                                            setErr("");
+                                        }
+                                    },
+                                },
+                                "Iniciar sesión",
+                            ),
+                            e(
+                                "div",
+                                {
+                                    style: "font-size: 12px; color: var(--danger); text-align: center; min-height: 16px;",
+                                },
+                                err,
+                            ),
+                        ),
+                    );
+                }
+
+                function Dashboard() {
+                    const activos = state().proyectos.filter(
+                        (p) => !["Entregado", "Cancelado"].includes(p.estado),
+                    ).length;
+                    return e(
+                        Fragment,
+                        null,
+                        e(
+                            "div",
+                            { class: "stats-grid" },
+                            e(
+                                "div",
+                                { class: "stat-card" },
+                                e(
+                                    "div",
+                                    { class: "stat-label" },
+                                    "Proyectos activos",
+                                ),
+                                e("div", { class: "stat-value blue" }, activos),
+                            ),
+                            e(
+                                "div",
+                                { class: "stat-card" },
+                                e("div", { class: "stat-label" }, "Clientes"),
+                                e(
+                                    "div",
+                                    { class: "stat-value green" },
+                                    state().clientes.length,
+                                ),
+                            ),
+                            e(
+                                "div",
+                                { class: "stat-card" },
+                                e(
+                                    "div",
+                                    { class: "stat-label" },
+                                    "Total presupuestado (USD)",
+                                ),
+                                e(
+                                    "div",
+                                    { class: "stat-value warn" },
+                                    "$" +
+                                        state()
+                                            .proyectos.reduce(
+                                                (s, p) => s + (p.presup || 0),
+                                                0,
+                                            )
+                                            .toLocaleString(),
+                                ),
+                            ),
+                        ),
+                        e(
+                            "div",
+                            { class: "sec-header" },
+                            e(
+                                "div",
+                                { class: "sec-title" },
+                                "Proyectos recientes",
+                            ),
+                        ),
+                        e(
+                            "div",
+                            { class: "table-wrap" },
+                            e(
+                                "table",
+                                null,
+                                e(
+                                    "thead",
+                                    null,
+                                    e(
+                                        "tr",
+                                        null,
+                                        e("th", null, "Proyecto"),
+                                        e("th", null, "Cliente"),
+                                        e("th", null, "Estado"),
+                                        e("th", null, "Presupuesto"),
+                                    ),
+                                ),
+                                e(
+                                    "tbody",
+                                    null,
+                                    e(For, {
+                                        each: () => state().proyectos,
+                                        children: (p) =>
+                                            e(
+                                                "tr",
+                                                null,
+                                                e(
+                                                    "td",
+                                                    null,
+                                                    e("b", null, p.nombre),
+                                                ),
+                                                e(
+                                                    "td",
+                                                    null,
+                                                    getCli(p.clienteId).nombre ||
+                                                        "-",
+                                                ),
+                                                e(
+                                                    "td",
+                                                    null,
+                                                    e(
+                                                        "span",
+                                                        {
+                                                            class: `badge badge-${p.estado === "En desarrollo" ? "blue" : p.estado === "Entregado" ? "green" : "gray"}`,
+                                                        },
+                                                        p.estado,
+                                                    ),
+                                                ),
+                                                e(
+                                                    "td",
+                                                    null,
+                                                    "$" +
+                                                        (
+                                                            p.presup || 0
+                                                        ).toLocaleString(),
+                                                ),
+                                            ),
+                                    }),
+                                ),
+                            ),
+                        ),
+                    );
+                }
+
+                function ClientesView() {
+                    return e(
+                        Fragment,
+                        null,
+                        e(
+                            "div",
+                            { class: "sec-header" },
+                            e("div", { class: "sec-title" }, "Clientes"),
+                            e(
+                                "button",
+                                {
+                                    class: "btn btn-primary btn-sm",
+                                    onClick: () => {
+                                        setModalOpen("cliente");
+                                        setEditId(null);
+                                        setFormData({});
+                                    },
+                                },
+                                "+ Nuevo cliente",
+                            ),
+                        ),
+                        e(
+                            "div",
+                            { class: "table-wrap" },
+                            e(
+                                "table",
+                                null,
+                                e(
+                                    "thead",
+                                    null,
+                                    e(
+                                        "tr",
+                                        null,
+                                        e("th", null, "Nombre"),
+                                        e("th", null, "Email"),
+                                        e("th", null, "Teléfono"),
+                                        e("th", null, "Acciones"),
+                                    ),
+                                ),
+                                e(
+                                    "tbody",
+                                    null,
+                                    () =>
+                                        state().clientes.length
+                                            ? e(For, {
+                                                  each: () => state().clientes,
+                                                  children: (c) =>
+                                                      e(
+                                                          "tr",
+                                                          null,
+                                                          e(
+                                                              "td",
+                                                              null,
+                                                              e(
+                                                                  "b",
+                                                                  null,
+                                                                  c.nombre,
+                                                              ),
+                                                          ),
+                                                          e("td", null, c.email),
+                                                          e(
+                                                              "td",
+                                                              null,
+                                                              c.tel || "-",
+                                                          ),
+                                                          e(
+                                                              "td",
+                                                              {
+                                                                  style: "display: flex; gap: 6px;",
+                                                              },
+                                                              e(
+                                                                  "button",
+                                                                  {
+                                                                      class: "btn btn-secondary btn-sm",
+                                                                      onClick: () => {
+                                                                          setModalOpen(
+                                                                              "cliente",
+                                                                          );
+                                                                          setEditId(
+                                                                              c.id,
+                                                                          );
+                                                                          setFormData(
+                                                                              c,
+                                                                          );
+                                                                      },
+                                                                  },
+                                                                  "Editar",
+                                                              ),
+                                                              e(
+                                                                  "button",
+                                                                  {
+                                                                      class: "btn btn-danger btn-sm",
+                                                                      onClick: () => {
+                                                                          const updated =
+                                                                              updateState(
+                                                                                  state,
+                                                                                  {
+                                                                                      clientes:
+                                                                                          state().clientes.filter(
+                                                                                              (
+                                                                                                  x,
+                                                                                              ) =>
+                                                                                                  x.id !==
+                                                                                                  c.id,
+                                                                                          ),
+                                                                                  },
+                                                                              );
+                                                                          setState(
+                                                                              updated,
+                                                                          );
+                                                                          showToast(
+                                                                              "Cliente eliminado",
+                                                                          );
+                                                                      },
+                                                                  },
+                                                                  "✕",
+                                                              ),
+                                                          ),
+                                                      ),
+                                              })
+                                            : e(
+                                                  "tr",
+                                                  null,
+                                                  e(
+                                                      "td",
+                                                      {
+                                                          colSpan: "4",
+                                                          class: "empty-state",
+                                                      },
+                                                      "Sin clientes registrados",
+                                                  ),
+                                              ),
+                                ),
+                            ),
+                        ),
+                    );
+                }
+
+                function AppScreen() {
+                    return e(
+                        "div",
+                        { class: "app-layout" },
+                        e(
+                            "nav",
+                            { class: "sidebar" },
+                            e(
+                                "div",
+                                { class: "sidebar-logo" },
+                                "Targ",
+                                e("span", null, "Apps"),
+                            ),
+                            e(
+                                "div",
+                                { class: "nav" },
+                                ...[
+                                    {
+                                        id: "dashboard",
+                                        icon: "▣",
+                                        label: "Inicio",
+                                    },
+                                    {
+                                        id: "clientes",
+                                        icon: "◎",
+                                        label: "Clientes",
+                                    },
+                                    {
+                                        id: "proyectos",
+                                        icon: "◈",
+                                        label: "Proyectos",
+                                    },
+                                ].map((item) =>
+                                    e(
+                                        "div",
+                                        {
+                                            class: () =>
+                                                `nav-item ${currentView() === item.id ? "active" : ""}`,
+                                            onClick: () =>
+                                                setCurrentView(item.id),
+                                        },
+                                        e(
+                                            "span",
+                                            { class: "nav-icon" },
+                                            item.icon,
+                                        ),
+                                        item.label,
+                                    ),
+                                ),
+                            ),
+                            e(
+                                "div",
+                                { class: "sidebar-footer" },
+                                e(
+                                    "div",
+                                    { class: "user-chip" },
+                                    e(
+                                        "div",
+                                        { class: "avatar" },
+                                        currentUser()?.avatar,
+                                    ),
+                                    e(
+                                        "div",
+                                        null,
+                                        e(
+                                            "div",
+                                            { class: "user-name" },
+                                            currentUser()?.nombre,
+                                        ),
+                                        e(
+                                            "div",
+                                            { class: "user-role" },
+                                            currentUser()?.rol,
+                                        ),
+                                    ),
+                                ),
+                                e(
+                                    "button",
+                                    {
+                                        class: "btn btn-secondary btn-sm",
+                                        style: "width: 100%; margin-top: 10px;",
+                                        onClick: () => setCurrentUser(null),
+                                    },
+                                    "Salir",
+                                ),
+                            ),
+                        ),
+                        e(
+                            "div",
+                            { class: "main" },
+                            e(
+                                "div",
+                                { class: "topbar" },
+                                e(
+                                    "div",
+                                    { class: "page-title" },
+                                    () =>
+                                        ({
+                                            dashboard: "Panel principal",
+                                            clientes: "Clientes",
+                                            proyectos: "Proyectos",
+                                        }[currentView()] || ""),
+                                ),
+                                e(
+                                    "div",
+                                    {
+                                        style: "font-size: 11px; font-family: 'DM Mono', monospace; color: var(--accent2);",
+                                    },
+                                    "✓ Sincronizado (localStorage)",
+                                ),
+                            ),
+                            e(
+                                "div",
+                                { class: "page-content" },
+                                () =>
+                                    currentView() === "dashboard"
+                                        ? e(Dashboard)
+                                        : currentView() === "clientes"
+                                          ? e(ClientesView)
+                                          : e(
+                                                "div",
+                                                null,
+                                                "Proyectos (en desarrollo)",
+                                            ),
+                            ),
+                        ),
+                        // Modal Cliente
+                        e(
+                            "div",
+                            {
+                                class: () =>
+                                    `modal-overlay ${modalOpen() === "cliente" ? "open" : ""}`,
+                                onClick: (ev) =>
+                                    ev.target === ev.currentTarget &&
+                                    setModalOpen(null),
+                            },
+                            e(
+                                "div",
+                                { class: "modal" },
+                                e(
+                                    "div",
+                                    { class: "modal-title" },
+                                    () =>
+                                        editId()
+                                            ? "Editar cliente"
+                                            : "Nuevo cliente",
+                                ),
+                                e(
+                                    "div",
+                                    { class: "form-grid" },
+                                    e(
+                                        "div",
+                                        { class: "field" },
+                                        e("label", null, "Nombre"),
+                                        e("input", {
+                                            type: "text",
+                                            value: () =>
+                                                formData()?.nombre || "",
+                                            onInput: (ev) =>
+                                                setFormData((f) => ({
+                                                    ...f,
+                                                    nombre: ev.target.value,
+                                                })),
+                                        }),
+                                    ),
+                                    e(
+                                        "div",
+                                        { class: "field" },
+                                        e("label", null, "Email"),
+                                        e("input", {
+                                            type: "text",
+                                            value: () =>
+                                                formData()?.email || "",
+                                            onInput: (ev) =>
+                                                setFormData((f) => ({
+                                                    ...f,
+                                                    email: ev.target.value,
+                                                })),
+                                        }),
+                                    ),
+                                    e(
+                                        "div",
+                                        { class: "field" },
+                                        e("label", null, "Teléfono"),
+                                        e("input", {
+                                            type: "text",
+                                            value: () => formData()?.tel || "",
+                                            onInput: (ev) =>
+                                                setFormData((f) => ({
+                                                    ...f,
+                                                    tel: ev.target.value,
+                                                })),
+                                        }),
+                                    ),
+                                    e(
+                                        "div",
+                                        { class: "field" },
+                                        e("label", null, "Fecha de alta"),
+                                        e("input", {
+                                            type: "text",
+                                            value: () => formData()?.alta || "",
+                                            onInput: (ev) =>
+                                                setFormData((f) => ({
+                                                    ...f,
+                                                    alta: ev.target.value,
+                                                })),
+                                        }),
+                                    ),
+                                ),
+                                e(
+                                    "div",
+                                    { class: "modal-footer" },
+                                    e(
+                                        "button",
+                                        {
+                                            class: "btn btn-secondary",
+                                            onClick: () => setModalOpen(null),
+                                        },
+                                        "Cancelar",
+                                    ),
+                                    e(
+                                        "button",
+                                        {
+                                            class: "btn btn-primary",
+                                            onClick: () => {
+                                                if (!formData()?.nombre) return;
+                                                let updated;
+                                                if (editId()) {
+                                                    updated = updateState(
+                                                        state,
+                                                        {
+                                                            clientes:
+                                                                state().clientes.map(
+                                                                    (c) =>
+                                                                        c.id ===
+                                                                        editId()
+                                                                            ? {
+                                                                                  ...c,
+                                                                                  ...formData(),
+                                                                              }
+                                                                            : c,
+                                                                ),
+                                                        },
+                                                    );
+                                                } else {
+                                                    updated = updateState(
+                                                        state,
+                                                        {
+                                                            clientes: [
+                                                                ...state()
+                                                                    .clientes,
+                                                                {
+                                                                    ...formData(),
+                                                                    id: state()
+                                                                        .nextId
+                                                                        .c++,
+                                                                    alta: new Date().toLocaleDateString(
+                                                                        "es-AR",
+                                                                    ),
+                                                                },
+                                                            ],
+                                                        },
+                                                    );
+                                                }
+                                                setState(updated);
+                                                showToast("Cliente guardado");
+                                                setModalOpen(null);
+                                            },
+                                        },
+                                        "Guardar cliente",
+                                    ),
+                                ),
+                            ),
+                        ),
+                    );
+                }
+
+                return e(
+                    Show,
+                    {
+                        when: currentUser,
+                        fallback: () => e(LoginScreen),
+                    },
+                    () => e(AppScreen),
+                );
+            }
+
+            render(App, document.getElementById("app"));
+        </script>
+    </body>
+</html>

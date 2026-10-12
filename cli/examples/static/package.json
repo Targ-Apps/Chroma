@@ -1,0 +1,14 @@
+{
+  "name": "chroma-static-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chroma static app: plain HTML/JS files, minified as-is on build, no bundler.",
+  "type": "module",
+  "scripts": {
+    "dev": "chroma dev",
+    "build": "chroma build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

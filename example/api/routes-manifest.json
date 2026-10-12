@@ -1,0 +1,8 @@
+{
+  "routes": [
+    {"path": "/api/webhook", "module": "./api/webhook/CUSTOM.js"},
+    {"path": "/api/webhook", "module": "./api/webhook/DELETE.js"},
+    {"path": "/api/webhook", "module": "./api/webhook/GET.js"},
+    {"path": "/api/webhook", "module": "./api/webhook/POST.js"}
+  ]
+}

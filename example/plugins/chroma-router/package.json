@@ -1,0 +1,13 @@
+{
+  "name": "@chroma/router",
+  "version": "0.1.0",
+  "description": "API router plugin for Chroma: HTTP-like GET/POST/PUT/DELETE/CUSTOM handlers that answer local fetch calls in the browser.",
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "main": "./index.js",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "sideEffects": false
+}

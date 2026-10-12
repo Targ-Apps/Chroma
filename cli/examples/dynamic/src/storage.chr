@@ -1,0 +1,20 @@
+import { createChromaFs } from "@chroma/fs";
+
+let fsPromise = null;
+
+export function getFs() {
+    if (!fsPromise) {
+        fsPromise = createChromaFs({ configPath: "./chroma-fs.json" });
+    }
+    return fsPromise;
+}
+
+export async function saveNote(filename, text) {
+    const fs = await getFs();
+    await fs.writeFile(`notes/${filename}`, text);
+}
+
+export async function readNote(filename) {
+    const fs = await getFs();
+    return fs.readText(`notes/${filename}`);
+}

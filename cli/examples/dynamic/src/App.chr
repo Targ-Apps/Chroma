@@ -1,0 +1,11 @@
+import { e } from "../pkg/chroma.js";
+import { Counter } from "./components/Counter.chr";
+
+export function App() {
+    return e(
+        "main",
+        null,
+        e("h1", null, "Chroma app"),
+        e(Counter),
+    );
+}

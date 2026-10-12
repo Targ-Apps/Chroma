@@ -1,0 +1,221 @@
+{
+  "$schema": "./registry.schema.json",
+  "registryVersion": 1,
+  "libraries": [
+    {
+      "id": "chartjs",
+      "name": "Chart.js",
+      "version": "4.4.1",
+      "license": "MIT",
+      "categories": [
+        "charts",
+        "visualization"
+      ],
+      "description": "Canvas charts via the global Chart constructor.",
+      "files": [
+        {
+          "path": "vendor/chart.js/chart.umd.min.js",
+          "role": "script",
+          "format": "umd"
+        }
+      ],
+      "cdn": {
+        "primary": "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
+        "fallbacks": [
+          "https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js",
+          "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+        ]
+      },
+      "chromaJson": {
+        "global": "Chart",
+        "hooks": {
+          "load": "indexHtml:head",
+          "order": 20,
+          "staticBuild": "append-scripts"
+        },
+        "dynamic": {
+          "esbuildExternal": true
+        }
+      },
+      "notes": "Load before app bundle; use window.Chart from .chr after DOM ready."
+    },
+    {
+      "id": "dayjs",
+      "name": "dayjs",
+      "version": "1.11.13",
+      "license": "MIT",
+      "categories": [
+        "date-time",
+        "utility"
+      ],
+      "description": "Lightweight date/time formatting and parsing.",
+      "files": [
+        {
+          "path": "vendor/dayjs/dayjs.min.js",
+          "role": "script",
+          "format": "umd"
+        }
+      ],
+      "cdn": {
+        "primary": "https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js",
+        "fallbacks": [
+          "https://unpkg.com/dayjs@1.11.13/dayjs.min.js"
+        ]
+      },
+      "chromaJson": {
+        "global": "dayjs",
+        "hooks": {
+          "load": "indexHtml:head",
+          "order": 10,
+          "staticBuild": "append-scripts"
+        },
+        "dynamic": {
+          "esbuildExternal": true
+        }
+      }
+    },
+    {
+      "id": "lodash",
+      "name": "lodash",
+      "version": "4.17.21",
+      "license": "MIT",
+      "categories": [
+        "utility"
+      ],
+      "description": "Utility helpers exposed as global _ (legacy ports only).",
+      "files": [
+        {
+          "path": "vendor/lodash/lodash.min.js",
+          "role": "script",
+          "format": "umd"
+        }
+      ],
+      "cdn": {
+        "primary": "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js",
+        "fallbacks": [
+          "https://unpkg.com/lodash@4.17.21/lodash.min.js",
+          "https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"
+        ]
+      },
+      "chromaJson": {
+        "global": "_",
+        "hooks": {
+          "load": "indexHtml:head",
+          "order": 5,
+          "staticBuild": "append-scripts"
+        },
+        "dynamic": {
+          "esbuildExternal": true
+        }
+      },
+      "notes": "Prefer native JS in new Chroma code; lodash is for ported legacy screens."
+    },
+    {
+      "id": "echarts",
+      "name": "Apache ECharts",
+      "version": "6.1.0",
+      "license": "Apache-2.0",
+      "categories": [
+        "charts",
+        "visualization"
+      ],
+      "description": "Canvas/SVG charting via global echarts (Targ-Apps-Finance reference).",
+      "files": [
+        {
+          "path": "vendor/echarts/echarts.min.js",
+          "role": "script",
+          "format": "umd",
+          "integrity": "sha256-tmslrrTfhOMxmdwhaUAU0zbSIsvZ3rDlp8FL1qoND9A="
+        }
+      ],
+      "cdn": {
+        "primary": "https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js",
+        "fallbacks": [
+          "https://unpkg.com/echarts@6.1.0/dist/echarts.min.js"
+        ]
+      },
+      "chromaJson": {
+        "global": "echarts",
+        "hooks": {
+          "load": "indexHtml:head",
+          "order": 25,
+          "staticBuild": "append-scripts"
+        },
+        "dynamic": {
+          "esbuildExternal": true
+        }
+      },
+      "notes": "Targ-Apps-Finance loads jsDelivr with SRI; see audit-finance."
+    },
+    {
+      "id": "anime",
+      "name": "anime.js",
+      "version": "3.2.2",
+      "license": "MIT",
+      "categories": [
+        "utility",
+        "visualization"
+      ],
+      "description": "Lightweight animation via global anime (Targ-Apps-Finance reference).",
+      "files": [
+        {
+          "path": "vendor/animejs/anime.min.js",
+          "role": "script",
+          "format": "umd"
+        }
+      ],
+      "cdn": {
+        "primary": "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js",
+        "fallbacks": [
+          "https://unpkg.com/animejs@3.2.2/lib/anime.min.js"
+        ]
+      },
+      "chromaJson": {
+        "global": "anime",
+        "hooks": {
+          "load": "indexHtml:head",
+          "order": 30,
+          "staticBuild": "append-scripts"
+        },
+        "dynamic": {
+          "esbuildExternal": true
+        }
+      }
+    },
+    {
+      "id": "lucide",
+      "name": "Lucide",
+      "version": "0.469.0",
+      "license": "ISC",
+      "categories": [
+        "ui"
+      ],
+      "description": "Icon toolkit via global lucide (Targ-Apps-Finance reference).",
+      "files": [
+        {
+          "path": "vendor/lucide/lucide.js",
+          "role": "script",
+          "format": "umd"
+        }
+      ],
+      "cdn": {
+        "primary": "https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js",
+        "fallbacks": [
+          "https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.js"
+        ]
+      },
+      "chromaJson": {
+        "global": "lucide",
+        "hooks": {
+          "load": "indexHtml:head",
+          "order": 35,
+          "staticBuild": "append-scripts"
+        },
+        "dynamic": {
+          "esbuildExternal": true
+        }
+      },
+      "notes": "Finance pins unpkg as primary; jsDelivr is the ordered fallback."
+    }
+  ]
+}

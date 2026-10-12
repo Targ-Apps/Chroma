@@ -1,0 +1,8 @@
+{
+  "name": "styling",
+  "version": "0.1.0",
+  "type": "styling",
+  "description": "Tailwind/shadcn-style design tokens and utility classes for Chroma apps: colors, borders, rounded corners, shadows and text.",
+  "styles": ["tokens.css", "utilities.css"],
+  "entry": "variants.js"
+}

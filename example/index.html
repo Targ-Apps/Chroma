@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <title>Chroma — demo de hooks</title>
+        <meta name="description" content="Generated Chroma">
+        <style>
+            body { font-family: system-ui, sans-serif; margin: 0; }
+            main { min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
+            main.claro { background: #fafafa; color: #1a1a1a; }
+            main.oscuro { background: #1a1a2e; color: #eaeaea; }
+            section { margin: 1.5rem 0; padding: 1rem; border: 1px solid currentColor; border-radius: 8px; }
+            h2 { margin-top: 0; font-size: 1rem; opacity: 0.7; }
+            button { margin-right: 0.5rem; padding: 0.4rem 0.9rem; cursor: pointer; }
+
+            .btn { border: none; border-radius: 6px; font: inherit; cursor: pointer; }
+            .btn-primary { background: #4f46e5; color: #fff; }
+            .btn-ghost { background: transparent; color: inherit; border: 1px solid currentColor; }
+            .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
+            .btn-lg { padding: 0.6rem 1.2rem; font-size: 1.05rem; }
+            .btn-primary-lg { box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4); }
+        </style>
+    </head>
+    <body>
+        <div id="app"></div>
+
+        <script type="module">
+            import {
+                hookState,
+                render,
+                e,
+                Fragment,
+                useEffect,
+                useLayoutEffect,
+                useMemo,
+                useCallback,
+                useRef,
+                useReducer,
+                createContext,
+                useContext,
+                useDebugValue,
+                cva,
+                cx,
+            } from "../pkg/chroma.js";
+            import { loadPlugins } from "./plugins/loader.js";
+
+            const plugins = await loadPlugins();
+            const { tw, presets } = plugins.style.bootstrapStyle({ cva, cx });
+
+            // ═══════════════════════════════════════════════════════════════
+            // COMPONENTE REUTILIZABLE CON VARIANTES: mismo Button, distinto
+            // aspecto según props — el patrón cva (base + variants) resuelve
+            // la clase; el componente sigue siendo una función normal con e().
+            // ═══════════════════════════════════════════════════════════════
+
+            const buttonClass = cva({
+                base: "btn",
+                variants: {
+                    variant: { primary: "btn-primary", ghost: "btn-ghost" },
+                    size: { sm: "btn-sm", lg: "btn-lg" },
+                },
+                compoundVariants: [
+                    { variant: "primary", size: "lg", class: "btn-primary-lg" },
+                ],
+                defaultVariants: { variant: "primary", size: "sm" },
+            });
+
+            function Button(props) {
+                return e(
+                    "button",
+                    { class: buttonClass(props), onClick: props.onClick },
+                    props.children,
+                );
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // SCOPED STATE: Estado que solo se propaga a componentes suscritos
+            // ═══════════════════════════════════════════════════════════════
+
+            /**
+             * Crea un estado "scoped": solo los componentes que lo usan se actualizan.
+             * Sin VDOM, las actualizaciones son ya granulares por signal, pero esto
+             * proporciona una API más clara para compartir estado local entre partes.
+             */
+            function useScopedState(initial) {
+                return hookState(initial);
+            }
+
+            /**
+             * Crea un selector reactivo: devuelve un getter que solo notifica cambios
+             * cuando el valor seleccionado realmente cambia (como useMemo pero más explícito).
+             */
+            function useSelector(getter, selector = (x) => x) {
+                return useMemo(() => selector(getter()), [getter]);
+            }
+
+            /**
+             * Hook para múltiples valores de estado independientes en un componente.
+             * Cada valor solo se actualiza cuando ese específico valor cambia.
+             */
+            function useMultipleState(initialValues) {
+                const states = Object.fromEntries(
+                    Object.entries(initialValues).map(([key, val]) => [
+                        key,
+                        hookState(val),
+                    ]),
+                );
+                return {
+                    ...Object.fromEntries(
+                        Object.entries(states).map(([k, [getter]]) => [k, getter]),
+                    ),
+                    ...Object.fromEntries(
+                        Object.entries(states).map(([k, [_, setter]]) => [
+                            "set" + k[0].toUpperCase() + k.slice(1),
+                            setter,
+                        ]),
+                    ),
+                };
+            }
+
+            // Contexto: comparte [theme, setTheme] con cualquier descendiente.
+            const Theme = createContext(null);
+
+            // Custom hook: compone hookState + useMemo + useCallback.
+            function useCounter(inicial) {
+                const [count, setCount] = hookState(inicial);
+                const doubled = useMemo(() => count() * 2, [count]);
+                const inc = useCallback(() => setCount(count() + 1));
+                useDebugValue("useCounter");
+                return { count, doubled, inc };
+            }
+
+            function Contador() {
+                const { count, doubled, inc } = useCounter(0);
+
+                // Efecto con dependencia: corre tras el montaje y en cada cambio.
+                useEffect(() => {
+                    document.title = `Chroma — count ${count()}`;
+                    return () => console.log("cleanup: count era", count());
+                }, [count]);
+
+                return e(
+                    "section",
+                    null,
+                    e("h2", null, "hookState + useMemo + useEffect"),
+                    e("button", { onClick: inc }, "Count: ", count),
+                    e("p", null, "El doble (useMemo): ", doubled),
+                );
+            }
+
+            function Reductor() {
+                const [total, dispatch] = useReducer((estado, accion) => {
+                    switch (accion) {
+                        case "sumar": return estado + 1;
+                        case "restar": return estado - 1;
+                        case "reset": return 0;
+                        default: return estado;
+                    }
+                }, 0);
+
+                return e(
+                    "section",
+                    null,
+                    e("h2", null, "useReducer"),
+                    e("button", { onClick: () => dispatch("restar") }, "−"),
+                    e("strong", null, " ", total, " "),
+                    e("button", { onClick: () => dispatch("sumar") }, "+"),
+                    e("button", { onClick: () => dispatch("reset") }, "reset"),
+                );
+            }
+
+            function Enfocable() {
+                const inputRef = useRef(null);
+
+                // Síncrono, antes del paint: el nodo ya está en inputRef.current.
+                useLayoutEffect(() => {
+                    inputRef.current.placeholder = "seteado por useLayoutEffect";
+                }, []);
+
+                return e(
+                    "section",
+                    null,
+                    e("h2", null, "useRef + useLayoutEffect"),
+                    e("input", { ref: inputRef }),
+                    e("button", { onClick: () => inputRef.current.focus() }, "Enfocar"),
+                );
+            }
+
+            function BotonTema() {
+                const [theme, setTheme] = useContext(Theme);
+                return e(
+                    "button",
+                    { onClick: () => setTheme(theme() === "claro" ? "oscuro" : "claro") },
+                    "Cambiar tema (actual: ", () => theme(), ")",
+                );
+            }
+
+            function Botones() {
+                return e(
+                    "section",
+                    null,
+                    e("h2", null, "cva — componente reutilizable con variantes"),
+                    e(Button, { variant: "primary", size: "sm", onClick: () => alert("primary/sm") }, "Guardar"),
+                    e(Button, { variant: "ghost", size: "sm", onClick: () => alert("ghost/sm") }, "Cancelar"),
+                    e(Button, { variant: "primary", size: "lg", onClick: () => alert("primary/lg") }, "Confirmar"),
+                );
+            }
+
+            function ApiRoutes() {
+                const [log, setLog] = hookState("");
+
+                async function callApi(label, promise) {
+                    const res = await promise;
+                    const json = await res.json();
+                    setLog(`${label}: ${JSON.stringify(json, null, 2)}`);
+                }
+
+                return e(
+                    "section",
+                    { class: presets.card({ shadow: "sm" }) },
+                    e("h2", null, "@chroma/router — webhooks locales"),
+                    e("p", { class: tw("text-muted-foreground", "text-sm") }, "fetch interceptado hacia /api/webhook"),
+                    e("button", { class: presets.button({ variant: "secondary", size: "sm" }), onClick: () => callApi("GET", fetch("/api/webhook")) }, "GET"),
+                    e("button", { class: presets.button({ variant: "secondary", size: "sm" }), onClick: () => callApi("POST", fetch("/api/webhook", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ping: true }) })) }, "POST"),
+                    e("button", { class: presets.button({ variant: "secondary", size: "sm" }), onClick: () => callApi("DELETE", fetch("/api/webhook", { method: "DELETE" })) }, "DELETE"),
+                    e("button", { class: presets.button({ variant: "outline", size: "sm" }), onClick: () => callApi("CUSTOM", fetch("/api/webhook", { method: "CUSTOM", headers: { "X-Custom-Operation": "count" } })) }, "CUSTOM count"),
+                    log() ? e("pre", { class: tw("text-sm", "mt-2") }, log) : null,
+                );
+            }
+
+            function StyleShowcase() {
+                return e(
+                    "section",
+                    { class: presets.card({ shadow: "md", padding: "md" }) },
+                    e("h2", null, "@chroma/style — tw + presets"),
+                    e("p", { class: tw("text-muted-foreground", "text-sm", "mb-4") }, "Utilidades CSS + variantes cva del plugin (alineado con extensions/styling)."),
+                    e("div", { class: tw("flex", "gap-2", "mb-4") },
+                        e("button", { class: presets.button({ variant: "primary", size: "sm" }) }, "Primary"),
+                        e("button", { class: presets.button({ variant: "secondary", size: "sm" }) }, "Secondary"),
+                        e("button", { class: presets.button({ variant: "outline", size: "sm" }) }, "Outline"),
+                        e("button", { class: presets.button({ variant: "destructive", size: "sm" }) }, "Destructive"),
+                    ),
+                    e("div", { class: tw("flex", "gap-2", "mb-4") },
+                        e("span", { class: presets.badge({ variant: "default" }) }, "Badge"),
+                        e("span", { class: presets.badge({ variant: "secondary" }) }, "Secondary"),
+                        e("span", { class: presets.badge({ variant: "outline" }) }, "Outline"),
+                    ),
+                    e("input", { class: presets.input(), placeholder: "Input preset", type: "text" }),
+                    e("p", { class: tw("text-xs", "text-muted-foreground", "mt-2") },
+                        "Tipografía: ",
+                        e("span", { class: "text-xs" }, "text-xs "),
+                        e("span", { class: "text-sm" }, "text-sm "),
+                        e("span", { class: "text-base font-medium" }, "text-base "),
+                        e("span", { class: "text-lg font-semibold" }, "text-lg "),
+                        e("span", { class: "text-xl font-bold" }, "text-xl"),
+                    ),
+                );
+            }
+
+            function App() {
+                const [theme, setTheme] = hookState("claro");
+
+                // Los children del Provider van como función (lazy) para que
+                // useContext los vea con el provider activo.
+                return e(Theme.Provider, { value: [theme, setTheme] }, () =>
+                    e(
+                        "main",
+                        { class: theme }, // atributo reactivo: getter como valor
+                        e("h1", null, "Chroma — hooks"),
+                        e(BotonTema),
+                        e(Contador),
+                        e(Reductor),
+                        e(Enfocable),
+                        e(Botones),
+                        e(StyleShowcase),
+                        e(ApiRoutes),
+                    ),
+                );
+            }
+
+            render(App, document.getElementById("app"));
+        </script>
+    </body>
+</html>

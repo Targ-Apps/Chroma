@@ -1,0 +1,12 @@
+{
+  "name": "chroma-fs",
+  "package": "@chroma/fs",
+  "version": "0.1.0",
+  "description": "Configuration-driven storage for Chroma apps (IndexedDB and filesystem backends).",
+  "entry": "index.js",
+  "loadAs": "fs",
+  "capabilities": ["storage"],
+  "hooks": {
+    "bootstrap": "bootstrapFs"
+  }
+}

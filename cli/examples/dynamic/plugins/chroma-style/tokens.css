@@ -1,0 +1,140 @@
+/*
+ * Design tokens: TargApps brand palette (hex canonical) + layout scale.
+ * `--cs-*` holds brand colors; semantic aliases (`--background`, …) map
+ * utilities and component shells without breaking existing class names.
+ *
+ * Light: `:root` / `[data-theme="light"]`
+ * Dark: `[data-theme="dark"]` or `prefers-color-scheme` when no data-theme.
+ */
+
+:root,
+[data-theme="light"] {
+  --cs-background: #FAF9F5;
+  --cs-foreground: #3D3929;
+  --cs-primary: #C96442;
+  --cs-primary-foreground: #FAF9F5;
+  --cs-secondary: #E9E6DC;
+  --cs-secondary-foreground: #3D3929;
+  --cs-muted: #EDE9DE;
+  --cs-muted-foreground: #7A7568;
+  --cs-border: #DAD9D4;
+  --cs-destructive: #141413;
+  --cs-destructive-foreground: #FAF9F5;
+
+  --background: var(--cs-background);
+  --foreground: var(--cs-foreground);
+  --card: var(--cs-background);
+  --card-foreground: var(--cs-foreground);
+  --primary: var(--cs-primary);
+  --primary-foreground: var(--cs-primary-foreground);
+  --secondary: var(--cs-secondary);
+  --secondary-foreground: var(--cs-secondary-foreground);
+  --muted: var(--cs-muted);
+  --muted-foreground: var(--cs-muted-foreground);
+  --accent: var(--cs-secondary);
+  --accent-foreground: var(--cs-secondary-foreground);
+  --destructive: var(--cs-destructive);
+  --destructive-foreground: var(--cs-destructive-foreground);
+  --border: var(--cs-border);
+  --input: var(--cs-border);
+  --ring: var(--cs-primary);
+
+  --radius-none: 0px;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  --text-xs: 0.75rem;
+  --text-xs-leading: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm-leading: 1.25rem;
+  --text-base: 1rem;
+  --text-base-leading: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg-leading: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl-leading: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl-leading: 2rem;
+
+  --animate-duration-fast: 150ms;
+  --animate-duration: 300ms;
+  --animate-duration-slow: 500ms;
+  --animate-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-stagger: 60ms;
+}
+
+[data-theme="dark"] {
+  --cs-background: #262624;
+  --cs-foreground: #C3C0B6;
+  --cs-primary: #D97757;
+  --cs-primary-foreground: #FAF9F5;
+  --cs-secondary: #FAF9F5;
+  --cs-secondary-foreground: #3D3929;
+  --cs-muted: #1B1B19;
+  --cs-muted-foreground: #8A8780;
+  --cs-border: #3E3E38;
+  --cs-destructive: #EF4444;
+  --cs-destructive-foreground: #FAF9F5;
+
+  --background: var(--cs-background);
+  --foreground: var(--cs-foreground);
+  --card: var(--cs-muted);
+  --card-foreground: var(--cs-foreground);
+  --primary: var(--cs-primary);
+  --primary-foreground: var(--cs-primary-foreground);
+  --secondary: var(--cs-secondary);
+  --secondary-foreground: var(--cs-secondary-foreground);
+  --muted: var(--cs-muted);
+  --muted-foreground: var(--cs-muted-foreground);
+  --accent: var(--cs-muted);
+  --accent-foreground: var(--cs-foreground);
+  --destructive: var(--cs-destructive);
+  --destructive-foreground: var(--cs-destructive-foreground);
+  --border: var(--cs-border);
+  --input: var(--cs-border);
+  --ring: var(--cs-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --cs-background: #262624;
+    --cs-foreground: #C3C0B6;
+    --cs-primary: #D97757;
+    --cs-primary-foreground: #FAF9F5;
+    --cs-secondary: #FAF9F5;
+    --cs-secondary-foreground: #3D3929;
+    --cs-muted: #1B1B19;
+    --cs-muted-foreground: #8A8780;
+    --cs-border: #3E3E38;
+    --cs-destructive: #EF4444;
+    --cs-destructive-foreground: #FAF9F5;
+
+    --background: var(--cs-background);
+    --foreground: var(--cs-foreground);
+    --card: var(--cs-muted);
+    --card-foreground: var(--cs-foreground);
+    --primary: var(--cs-primary);
+    --primary-foreground: var(--cs-primary-foreground);
+    --secondary: var(--cs-secondary);
+    --secondary-foreground: var(--cs-secondary-foreground);
+    --muted: var(--cs-muted);
+    --muted-foreground: var(--cs-muted-foreground);
+    --accent: var(--cs-muted);
+    --accent-foreground: var(--cs-foreground);
+    --destructive: var(--cs-destructive);
+    --destructive-foreground: var(--cs-destructive-foreground);
+    --border: var(--cs-border);
+    --input: var(--cs-border);
+    --ring: var(--cs-primary);
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.targapps.xyz/schemas/chroma/legacy-lib-registry.schema.json",
+  "title": "Chroma legacy JS library registry",
+  "description": "Machine-readable catalog of third-party UMD/IIFE/global scripts for chroma add. Source of truth: Chroma/cli/legacy-libs/registry.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registryVersion", "libraries"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "registryVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Increment when entry shape or semantics change."
+    },
+    "libraries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/library" }
+    }
+  },
+  "$defs": {
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Stable slug referenced from chroma.json legacyLibraries[].id."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human label (npm or product name)."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pinned semver of the vendored/CDN artifact."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX id when known (audit / compliance)."
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "charts",
+              "date-time",
+              "dom",
+              "editor",
+              "maps",
+              "math",
+              "network",
+              "routing",
+              "storage",
+              "styling",
+              "testing",
+              "ui",
+              "utility",
+              "visualization"
+            ]
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "Short catalog blurb for docs and chroma add listings."
+        },
+        "files": {
+          "type": "array",
+          "description": "Paths relative to the app root when source is vendor (third-party globals).",
+          "items": { "$ref": "#/$defs/file" }
+        },
+        "cdn": {
+          "$ref": "#/$defs/cdn"
+        },
+        "chromaJson": {
+          "$ref": "#/$defs/chromaJsonGlobal"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Migration or security notes for maintainers."
+        }
+      },
+      "required": ["id", "name", "version", "cdn", "chromaJson", "categories", "files"]
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "App-relative path, e.g. vendor/chart.js/chart.umd.min.js."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["script", "style", "worker"],
+          "description": "How the file is injected into the page or build."
+        },
+        "format": {
+          "type": "string",
+          "enum": ["umd", "iife", "esm", "css"],
+          "description": "Wire format; legacy globals are usually umd or iife."
+        },
+        "integrity": {
+          "type": "string",
+          "description": "Optional subresource integrity (sha384-…) for CDN or copied vendor files."
+        }
+      }
+    },
+    "cdn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "fallbacks"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "First URL to try when legacyLibraries[].source is cdn or auto."
+        },
+        "fallbacks": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "description": "Ordered alternate CDNs (jsDelivr, unpkg, cdnjs, self-hosted mirror)."
+        }
+      }
+    },
+    "chromaJsonGlobal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["global", "hooks"],
+      "description": "How chroma.json and loaders should treat a third-party global script.",
+      "properties": {
+        "global": {
+          "type": "string",
+          "minLength": 1,
+          "description": "window global after the script executes (e.g. Chart, dayjs)."
+        },
+        "hooks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["load"],
+          "properties": {
+            "load": {
+              "$ref": "#/$defs/loadHook",
+              "description": "When and where to inject scripts or register static build inputs."
+            },
+            "order": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 100,
+              "description": "Lower runs earlier when multiple legacy libraries are declared."
+            },
+            "staticBuild": {
+              "type": "string",
+              "enum": ["append-scripts", "none"],
+              "default": "append-scripts",
+              "description": "For mode static: merge file paths into build.scripts."
+            }
+          }
+        },
+        "dynamic": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "esbuildExternal": {
+              "type": "boolean",
+              "default": true,
+              "description": "When true, bundler treats the global as external (future CLI support)."
+            }
+          }
+        }
+      }
+    },
+    "loadHook": {
+      "type": "string",
+      "enum": [
+        "indexHtml:head",
+        "indexHtml:body-start",
+        "indexHtml:body-end",
+        "static:scripts"
+      ],
+      "description": "indexHtml:* injects a classic script tag; static:scripts only applies in static mode via build.scripts."
+    }
+  }
+}

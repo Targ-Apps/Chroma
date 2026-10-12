@@ -1,0 +1,17 @@
+{
+  "name": "@chroma/t2t",
+  "version": "0.1.0",
+  "description": "Chroma test-to-test plugin — Node test bridge, persist round-trip, snapshot smoke checks for chroma-fs apps.",
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "main": "./index.js",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./helpers": "./helpers.js"
+  },
+  "scripts": {
+    "test:node": "node node/run-tests.mjs"
+  },
+  "sideEffects": false
+}

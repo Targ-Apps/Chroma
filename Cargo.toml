@@ -1,0 +1,44 @@
+[package]
+name = "chroma"
+version = "0.3.13"
+edition = "2024"
+description = "Fine-grained reactive web framework whose engine runs on Rust and WebAssembly."
+license = "GPL-3.0-or-later"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "Window",
+  "Document",
+  "Element",
+  "Node",
+  "Text",
+  "DocumentFragment",
+  "Event",
+  "NodeList",
+  "console",
+  "History",
+  "Location",
+]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+wasm-bindgen-futures = "0.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+codegen-units = 1
+strip = true
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--enable-bulk-memory", "--enable-sign-ext", "--enable-nontrapping-float-to-int", "--enable-mutable-globals"]

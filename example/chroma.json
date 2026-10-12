@@ -1,0 +1,6 @@
+{
+  "name": "chroma-hooks-demo",
+  "mode": "static",
+  "plugins": ["chroma-router", "chroma-style"],
+  "entry": "index.html"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "chroma-dynamic-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chroma dynamic app: ES module source across multiple files, bundled and WASM-recompiled on build.",
+  "type": "module",
+  "scripts": {
+    "dev": "chroma dev",
+    "build": "chroma build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

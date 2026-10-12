@@ -1,0 +1,11 @@
+import { render, cva, cx } from "../pkg/chroma.js";
+import { loadPlugins } from "../plugins/loader.js";
+import { App } from "./App.chr";
+
+const plugins = await loadPlugins();
+if (plugins.style) {
+    globalThis.__chromaStyle = plugins.style.bootstrapStyle({ cva, cx });
+}
+globalThis.__chromaPlugins = plugins;
+
+render(App, document.getElementById("app"));

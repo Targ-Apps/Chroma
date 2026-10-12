@@ -1,0 +1,17 @@
+import { e } from "../pkg/chroma.js";
+import { FileExplorer } from "./components/FileExplorer.chr";
+
+export function App() {
+    return e(
+        "main",
+        null,
+        e("h1", null, "Chroma standard app"),
+        e(
+            "p",
+            { class: "subtitle" },
+            "Dynamic template with Chroma-Fs — list, read, write, and delete files. ",
+            "On desktop develop mode data lives under apps/develop/data/.",
+        ),
+        e(FileExplorer),
+    );
+}

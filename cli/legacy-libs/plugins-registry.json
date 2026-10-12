@@ -1,0 +1,143 @@
+{
+  "registryVersion": 1,
+  "libraries": [
+    {
+      "id": "chroma-fs",
+      "name": "Chroma FS",
+      "version": "0.1.0",
+      "categories": [
+        "storage"
+      ],
+      "description": "Configuration-driven storage (IndexedDB and filesystem backends). ESM plugin installed via chroma add.",
+      "canonical": {
+        "workspacePath": "Chroma-Fs",
+        "manifest": "chroma.plugin.json"
+      },
+      "vendor": {
+        "syncFrom": "dist",
+        "includeRootFiles": [
+          "package.json",
+          "chroma.plugin.json"
+        ],
+        "exampleTemplates": [
+          "dynamic",
+          "standard"
+        ],
+        "syncTargets": [
+          "Chroma/cli/plugins/chroma-fs",
+          "Chroma-CLI/plugins/chroma-fs"
+        ]
+      },
+      "install": {
+        "type": "plugin-built",
+        "dest": "plugins/chroma-fs",
+        "build": "npm install --silent && npm run build"
+      },
+      "chromaJson": {
+        "plugin": "chroma-fs",
+        "sidecar": "chroma-fs.json"
+      },
+      "cdn": {
+        "primary": "",
+        "fallbacks": []
+      }
+    },
+    {
+      "id": "chroma-style",
+      "name": "Chroma Style",
+      "version": "0.1.2",
+      "categories": [
+        "styling"
+      ],
+      "description": "Design tokens, utility CSS, and cva presets (@chroma/style).",
+      "canonical": {
+        "workspacePath": "Chroma-Style",
+        "manifest": "chroma.plugin.json"
+      },
+      "vendor": {
+        "syncFrom": ".",
+        "exampleTemplates": [
+          "dynamic",
+          "static"
+        ],
+        "syncTargets": [
+          "Chroma/cli/plugins/chroma-style",
+          "Chroma-CLI/plugins/chroma-style"
+        ]
+      },
+      "install": {
+        "type": "plugin-copy",
+        "dest": "plugins/chroma-style"
+      },
+      "chromaJson": {
+        "plugin": "chroma-style"
+      },
+      "cdn": {
+        "primary": "",
+        "fallbacks": []
+      }
+    },
+    {
+      "id": "chroma-router",
+      "name": "Chroma Router",
+      "version": "0.1.0",
+      "categories": [
+        "routing"
+      ],
+      "description": "HTTP-like route handlers for Chroma apps (browser JS).",
+      "canonical": {
+        "workspacePath": "Chroma-Router",
+        "manifest": "chroma.plugin.json"
+      },
+      "vendor": {
+        "syncFrom": ".",
+        "syncTargets": [
+          "Chroma/cli/plugins/chroma-router",
+          "Chroma-CLI/plugins/chroma-router"
+        ]
+      },
+      "install": {
+        "type": "plugin-copy",
+        "dest": "plugins/chroma-router"
+      },
+      "chromaJson": {
+        "plugin": "chroma-router"
+      },
+      "cdn": {
+        "primary": "",
+        "fallbacks": []
+      }
+    },
+    {
+      "id": "chroma-t2t",
+      "name": "Chroma T2T",
+      "version": "0.1.0",
+      "categories": [
+        "testing"
+      ],
+      "description": "Test-to-test utilities and dev tooling for Chroma apps.",
+      "canonical": {
+        "workspacePath": "Chroma-t2t",
+        "manifest": "chroma.plugin.json"
+      },
+      "vendor": {
+        "syncFrom": ".",
+        "syncTargets": [
+          "Chroma/cli/plugins/chroma-t2t",
+          "Chroma-CLI/plugins/chroma-t2t"
+        ]
+      },
+      "install": {
+        "type": "plugin-copy",
+        "dest": "plugins/chroma-t2t"
+      },
+      "chromaJson": {
+        "plugin": "chroma-t2t"
+      },
+      "cdn": {
+        "primary": "",
+        "fallbacks": []
+      }
+    }
+  ]
+}

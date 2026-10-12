@@ -1,0 +1,11 @@
+import { hookState, e } from "../../pkg/chroma.js";
+
+export function Counter() {
+    const [count, setCount] = hookState(0);
+    return e(
+        "button",
+        { onClick: () => setCount(count() + 1) },
+        "Count: ",
+        count,
+    );
+}

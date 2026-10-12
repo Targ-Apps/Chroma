@@ -1,0 +1,17 @@
+{
+  "name": "chroma-router",
+  "package": "@chroma/router",
+  "version": "0.1.0",
+  "description": "API router plugin for Chroma: HTTP-like route handlers that run in the browser, not Node.",
+  "entry": "index.js",
+  "loadAs": "router",
+  "capabilities": ["routing", "fetch-intercept"],
+  "hooks": {
+    "bootstrap": "bootstrapRouter"
+  },
+  "routing": {
+    "reservedMethods": ["GET", "POST", "PUT", "DELETE", "CUSTOM"],
+    "manifestPath": "./api/routes-manifest.json",
+    "pathConvention": "api/"
+  }
+}

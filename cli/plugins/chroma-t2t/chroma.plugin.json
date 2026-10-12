@@ -1,0 +1,12 @@
+{
+  "name": "chroma-t2t",
+  "package": "@chroma/t2t",
+  "version": "0.1.0",
+  "description": "Test-to-test utilities for Chroma apps — Node test bridge, persist round-trip, snapshot smoke checks.",
+  "entry": "index.js",
+  "loadAs": "t2t",
+  "capabilities": ["testing", "dev-tools"],
+  "hooks": {
+    "bootstrap": "bootstrapT2t"
+  }
+}

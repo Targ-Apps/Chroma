@@ -1,0 +1,15 @@
+{
+  "name": "chroma-style",
+  "package": "@chroma/style",
+  "version": "0.1.2",
+  "description": "Design tokens, utility CSS, and cva presets for Chroma apps.",
+  "entry": "index.js",
+  "loadAs": "style",
+  "capabilities": ["styling", "design-tokens"],
+  "hooks": {
+    "styles": "injectStyles"
+  },
+  "assets": {
+    "stylesheets": ["tokens.css", "utilities.css"]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@chroma/style",
+  "version": "0.1.2",
+  "description": "Design tokens and utility classes (colors, borders, rounded, shadows, text) with cva/cx integration for Chroma.",
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "main": "./index.js",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./tokens.css": "./tokens.css",
+    "./utilities.css": "./utilities.css",
+    "./variants.js": "./variants.js"
+  },
+  "sideEffects": ["./tokens.css", "./utilities.css"]
+}

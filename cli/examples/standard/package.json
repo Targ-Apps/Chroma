@@ -1,0 +1,16 @@
+{
+  "name": "chroma-standard-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standard Chroma app template with Chroma-Fs demo — dynamic modules, filesystem on desktop, IndexedDB in browser.",
+  "type": "module",
+  "scripts": {
+    "dev": "chroma dev",
+    "build": "chroma build",
+    "fs:init": "chroma fs init",
+    "fs:link": "chroma fs link"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

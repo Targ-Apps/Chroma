@@ -1,0 +1,12 @@
+{
+  "$schema": "https://docs.targapps.xyz/schemas/chroma/chroma.schema.json",
+  "name": "chroma-dynamic-app",
+  "mode": "dynamic",
+  "plugins": ["chroma-fs", "chroma-router", "chroma-style"],
+  "entry": "index.html",
+  "outDir": "dist",
+  "engine": { "vendorDir": "pkg", "rebuildWasm": true },
+  "build": { "jsEntry": "src/main.chr", "outfile": "bundle.js", "format": "esm", "minify": true, "sourcemap": true },
+  "package": { "zip": true },
+  "dev": { "port": 5173, "desktop": true }
+}

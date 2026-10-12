@@ -1,0 +1,11 @@
+import { createChromaFs } from "@chroma/fs";
+
+let fsPromise = null;
+
+/** Singleton Chroma-Fs instance for this app (reads chroma-fs.json). */
+export function getFs() {
+    if (!fsPromise) {
+        fsPromise = createChromaFs({ configPath: "./chroma-fs.json" });
+    }
+    return fsPromise;
+}
