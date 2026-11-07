@@ -197,7 +197,7 @@ COMMANDS
         Scaffolds a new app into ./<name>.
         --template   static (default) | dynamic | standard
 
-    dev [--port <n>] [--no-desktop]
+    dev [--port <n>] [--no-desktop] [--static]
         Serves the current app at http://localhost:<port>. Requires
         chroma.json in the working directory. Default port: chroma.json's
         dev.port, or 4173.
@@ -210,6 +210,15 @@ COMMANDS
         also launch Chroma Desktop in develop mode — the project opens
         directly for testing, without the import library menu. Pass
         --no-desktop to serve in the browser only.
+
+        --static serves chroma.json outDir (default dist/) with hot-reload
+        off — same as `chroma serve` (smoke-test a production build).
+
+    serve [--port <n>] [--dir <path>]
+        Serves the compiled build output (chroma.json outDir, default
+        dist/) over HTTP with correct MIME types (.wasm, .chr, etc.) and
+        no hot-reload. Run `chroma build` first. Simulates deploying dist/
+        to a static host without nginx.
 
     build
         Compiles and packages the current app per chroma.json. Output goes
@@ -812,6 +821,40 @@ append_query_param() {
     fi
 }
 
+# ── serve (production-like static preview) ───────────────────────────────────
+# Serves chroma.json outDir with the engine binary: MIME table matches nginx,
+# no hot-reload, no HTML injection — same as deploying dist/ to a static host.
+cmd_serve() {
+    LOG_CTX=Serve
+    [ -f "chroma.json" ] || die "chroma.json not found in the current directory. Run this inside an app created with 'chroma new'."
+    [ -x "$CHROMA_ENGINE_BIN" ] || die "engine binary not found at $CHROMA_ENGINE_BIN. Run 'chroma install'."
+
+    local port outdir entry
+    port="$(json_field chroma.json port)"; port="${port:-4173}"
+    outdir="$(json_field chroma.json outDir)"; outdir="${outdir:-dist}"
+    entry="$(json_field chroma.json entry)"; entry="${entry:-index.html}"
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --port) port="$2"; shift 2 ;;
+            --port=*) port="${1#*=}"; shift ;;
+            --dir) outdir="$2"; shift 2 ;;
+            --dir=*) outdir="${1#*=}"; shift ;;
+            --static) shift ;;
+            --no-desktop|--no-hot-reload|--no-reload|--hot-reload|--reload) shift ;;
+            *)
+                die "Unknown option for 'chroma serve': $1 (use --port <n> or --dir <path>)"
+                ;;
+        esac
+    done
+
+    [ -d "$outdir" ] || die "Build output not found at $outdir/. Run 'chroma build' first."
+    [ -f "$outdir/$entry" ] || die "$outdir/$entry not found. Run 'chroma build' or check chroma.json entry/outDir."
+
+    info "Serving $outdir/ at http://127.0.0.1:$port/ (production-like — no hot-reload)"
+    CHROMA_DEV_RELOAD=0 exec "$CHROMA_ENGINE_BIN" --port "$port" --dir "$outdir" --no-reload
+}
+
 # ── dev ──────────────────────────────────────────────────────────────────────
 # Both templates are served the same way in development: they're ES modules
 # the browser already understands without transforms. `build` is where
@@ -822,6 +865,20 @@ cmd_dev() {
     LOG_CTX=Dev
     [ -f "chroma.json" ] || die "chroma.json not found in the current directory. Run this inside an app created with 'chroma new'."
     [ -x "$CHROMA_ENGINE_BIN" ] || die "engine binary not found at $CHROMA_ENGINE_BIN. Run 'chroma install'."
+
+    local a
+    for a in "$@"; do
+        if [ "$a" = "--static" ]; then
+            local filtered=()
+            local x
+            for x in "$@"; do
+                [ "$x" = "--static" ] && continue
+                filtered+=("$x")
+            done
+            cmd_serve "${filtered[@]}"
+            return
+        fi
+    done
 
     local port mode desktop no_desktop=false
     port="$(json_field chroma.json port)"; port="${port:-4173}"
@@ -1264,6 +1321,7 @@ case "$_cmd" in
     install) shift; cmd_install "$@" ;;
     new|init) shift; cmd_new "$@" ;;
     dev) shift; cmd_dev "$@" ;;
+    serve) shift; cmd_serve "$@" ;;
     build) shift; cmd_build "$@" ;;
     validate) shift; cmd_validate "$@" ;;
     add) shift; cmd_add "$@" ;;

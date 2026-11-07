@@ -93,7 +93,7 @@ COMMANDS
         Scaffolds a new app into .\<name>.
         --template   static (default) | dynamic | standard
 
-    dev [--port <n>] [--no-desktop] [--no-hot-reload] [--hot-reload]
+    dev [--port <n>] [--no-desktop] [--static] [--no-hot-reload] [--hot-reload]
         Serves the current app at http://localhost:<port>. Requires
         chroma.json in the working directory. Default port: chroma.json's
         dev.port, or 4173.
@@ -106,6 +106,15 @@ COMMANDS
         also launch Chroma Desktop in develop mode — the project opens
         directly for testing, without the import library menu. Pass
         --no-desktop to serve in the browser only.
+
+        --static serves chroma.json outDir (default dist\) with hot-reload
+        off — same as chroma serve (smoke-test a production build).
+
+    serve [--port <n>] [--dir <path>]
+        Serves the compiled build output (chroma.json outDir, default
+        dist\) over HTTP with correct MIME types (.wasm, .chr, etc.) and
+        no hot-reload. Run chroma build first. Simulates deploying dist\
+        to a static host without nginx.
 
     build
         Compiles and packages the current app per chroma.json. Output goes
@@ -599,6 +608,54 @@ function New-ChromaApp {
     Write-Host "  cd $name; chroma dev"
 }
 
+# ── serve (production-like static preview) ─────────────────────────────────────
+function Invoke-ChromaServe {
+    param([string[]]$Arguments)
+
+    if (-not (Test-Path "chroma.json")) {
+        Fail "chroma.json not found in the current directory. Run this inside an app created with 'chroma new'."
+    }
+    if (-not (Test-Path $ChromaEngineBin)) {
+        Fail "engine binary not found at $ChromaEngineBin. Run 'chroma install'."
+    }
+
+    $cfg = Get-Content -Raw "chroma.json" | ConvertFrom-Json
+    $port = if ($cfg.dev.port) { $cfg.dev.port } else { 4173 }
+    $outDir = if ($cfg.outDir) { $cfg.outDir } else { "dist" }
+    $entry = if ($cfg.entry) { $cfg.entry } else { "index.html" }
+
+    for ($i = 0; $i -lt $Arguments.Count; $i++) {
+        $arg = $Arguments[$i]
+        if ($arg -eq "--port") {
+            $port = $Arguments[$i + 1]
+            $i++
+        } elseif ($arg -match '^--port=(.*)$') {
+            $port = $Matches[1]
+        } elseif ($arg -eq "--dir") {
+            $outDir = $Arguments[$i + 1]
+            $i++
+        } elseif ($arg -match '^--dir=(.*)$') {
+            $outDir = $Matches[1]
+        } elseif ($arg -in @("--static", "--no-desktop", "--no-hot-reload", "--no-reload", "--hot-reload", "--reload")) {
+            continue
+        } else {
+            Fail "Unknown option for 'chroma serve': $arg (use --port <n> or --dir <path>)"
+        }
+    }
+
+    if (-not (Test-Path $outDir -PathType Container)) {
+        Fail "Build output not found at $outDir/. Run 'chroma build' first."
+    }
+    $entryPath = Join-Path $outDir $entry
+    if (-not (Test-Path $entryPath)) {
+        Fail "$entryPath not found. Run 'chroma build' or check chroma.json entry/outDir."
+    }
+
+    Info "Serving $outDir/ at http://127.0.0.1:${port}/ (production-like — no hot-reload)"
+    $env:CHROMA_DEV_RELOAD = "0"
+    & $ChromaEngineBin --port $port --dir $outDir --no-reload
+}
+
 # ── dev ──────────────────────────────────────────────────────────────────────
 # Both templates are served the same way in development: they're ES modules
 # the browser already understands without transforms. build is where
@@ -613,6 +670,12 @@ function Invoke-ChromaDev {
     }
     if (-not (Test-Path $ChromaEngineBin)) {
         Fail "engine binary not found at $ChromaEngineBin. Run 'chroma install'."
+    }
+
+    if ($Arguments -contains "--static") {
+        $filtered = $Arguments | Where-Object { $_ -ne "--static" }
+        Invoke-ChromaServe -Arguments $filtered
+        return
     }
 
     $cfg = Get-Content -Raw "chroma.json" | ConvertFrom-Json
@@ -925,6 +988,7 @@ switch ($Command) {
     "new"     { New-ChromaApp -Arguments $Rest }
     "init"    { New-ChromaApp -Arguments $Rest }
     "dev"     { Invoke-ChromaDev -Arguments $Rest }
+    "serve"   { Invoke-ChromaServe -Arguments $Rest }
     "build"   { Invoke-ChromaBuild }
     "validate" { Invoke-ChromaValidate }
     "add"     { Invoke-ChromaAdd -Arguments $Rest }

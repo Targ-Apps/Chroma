@@ -1,6 +1,6 @@
 [package]
 name = "chroma"
-version = "0.3.13"
+version = "0.3.14"
 edition = "2024"
 description = "Fine-grained reactive web framework whose engine runs on Rust and WebAssembly."
 license = "GPL-3.0-or-later"
