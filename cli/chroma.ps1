@@ -71,108 +71,120 @@ function Install-VersionFile {
     }
 }
 
+function Test-ChromaHelpColor {
+    if ($env:CHROMA_NO_COLOR -or $env:NO_COLOR) { return $false }
+    try { return -not [Console]::IsOutputRedirected } catch { return $Host.UI.SupportsVirtualTerminal }
+}
+
+function Write-HelpRule {
+    if (Test-ChromaHelpColor) { Write-Host '────────────────────────────────────────────────────────' -ForegroundColor DarkGray }
+    else { Write-Host '----------------------------------------' }
+}
+
+function Write-HelpSection($title) {
+    if (Test-ChromaHelpColor) { Write-Host "`n│ $title │" -ForegroundColor DarkGray }
+    else { Write-Host "`n[$title]" }
+}
+
+function Write-HelpCmd($sig) {
+    if (Test-ChromaHelpColor) { Write-Host "`n  $sig" -ForegroundColor Cyan }
+    else { Write-Host "`n  $sig" }
+}
+
+function Write-HelpBody($text) {
+    if (Test-ChromaHelpColor) { Write-Host "      $text" -ForegroundColor DarkGray }
+    else { Write-Host "      $text" }
+}
+
+function Write-HelpKv($key, $value) {
+    if (Test-ChromaHelpColor) {
+        Write-Host -NoNewline "      $key" -ForegroundColor White
+        Write-Host ": $value"
+    } else {
+        Write-Host "      ${key}: $value"
+    }
+}
+
 function Show-Usage {
-    @"
-NAME
-    chroma - CLI for the Chroma WASM engine
+    $ver = Get-ChromaVersionRaw
+    if (Test-ChromaHelpColor) {
+        Write-Host -NoNewline 'chroma ' -ForegroundColor Cyan
+        Write-Host "— CLI for the Chroma WASM engine  (v$ver)"
+    } else {
+        Write-Host "chroma — CLI for the Chroma WASM engine (v$ver)"
+    }
+    Write-HelpBody 'Run chroma <command> [options] inside an app directory unless noted.'
+    Write-HelpRule
 
-USAGE
-    chroma <command> [options]
+    Write-HelpSection 'USAGE'
+    Write-HelpCmd 'chroma <command> [options]'
+    Write-HelpKv 'Tip' 'Pipe to a file — colors are omitted when stdout is redirected'
 
-COMMANDS
-    install [--no-rebase-root]
-        Provisions the local toolchain (Rust, wasm32-unknown-unknown target,
-        wasm-pack, dev-server binary) and installs the chroma command on the
-        user's PATH. Run from a checkout of the repo (cli\chroma.ps1).
+    Write-HelpSection 'COMMANDS'
 
-        By default, every run wipes CHROMA_HOME and rebuilds it from
-        scratch (a clean reinstall). Pass --no-rebase-root to update in
-        place instead, without deleting CHROMA_HOME first.
+    Write-HelpCmd 'install [--no-rebase-root]'
+    Write-HelpBody 'Provision CHROMA_HOME: engine.exe, templates, pkg\, plugins, chroma on PATH.'
+    Write-HelpKv 'When' 'First setup, after upgrading Chroma, or to fix a broken install'
+    Write-HelpKv 'Why' 'new, dev, and build expect $env:CHROMA_HOME\bin (run: .\cli\chroma.ps1 install)'
+    Write-HelpKv 'Default' 'Wipes CHROMA_HOME and reinstalls (clean slate)'
+    Write-HelpKv 'Flag' '--no-rebase-root — update in place without deleting CHROMA_HOME first'
 
-    new <name> [--template static|dynamic|standard]
-        Scaffolds a new app into .\<name>.
-        --template   static (default) | dynamic | standard
+    Write-HelpCmd 'new <name> [--template static|dynamic|standard]'
+    Write-HelpBody 'Scaffold .\<name> from a template (default: static).'
+    Write-HelpKv 'When' 'Starting a project; templates set mode, plugins, and desktop dev defaults'
+    Write-HelpKv 'Example' 'chroma new my-app --template dynamic'
 
-    dev [--port <n>] [--no-desktop] [--static] [--no-hot-reload] [--hot-reload]
-        Serves the current app at http://localhost:<port>. Requires
-        chroma.json in the working directory. Default port: chroma.json's
-        dev.port, or 4173.
+    Write-HelpCmd 'dev [--port <n>] [--no-desktop] [--static] [--no-reload | --reload]'
+    Write-HelpBody 'Serve the project root with the engine dev server (needs chroma.json).'
+    Write-HelpKv 'When' 'Day-to-day editing; default port from chroma.json or 4173'
+    Write-HelpKv 'Why' 'Serves sources as ES modules; browser dev uses live reload'
+    Write-HelpKv 'Live reload' 'Full page refresh on source changes; off for Chroma Desktop develop'
+    Write-HelpKv '--no-desktop' 'Browser only when dev.desktop is true'
+    Write-HelpKv '--static' 'Serve outDir like chroma serve — run chroma build first'
 
-        Browser dev enables hot-reload (full page refresh on .chr and
-        related source changes). Chroma Desktop develop mode disables
-        reload (CHROMA_DEV_RELOAD=0, engine --no-reload).
+    Write-HelpCmd 'serve [--port <n>] [--dir <path>]'
+    Write-HelpBody 'Serve compiled outDir — production-like static host, no live reload.'
+    Write-HelpKv 'When' 'After chroma build; smoke-test dist\ before deploy'
+    Write-HelpKv 'Why' 'Correct MIME types; no dev-reload script injection'
 
-        Dynamic apps with dev.desktop=true (the dynamic template default)
-        also launch Chroma Desktop in develop mode — the project opens
-        directly for testing, without the import library menu. Pass
-        --no-desktop to serve in the browser only.
+    Write-HelpCmd 'build'
+    Write-HelpBody 'Package into chroma.json outDir (default dist\; wiped each run).'
+    Write-HelpKv 'When' 'Before deploy, serve, or Desktop zip import'
 
-        --static serves chroma.json outDir (default dist\) with hot-reload
-        off — same as chroma serve (smoke-test a production build).
+    Write-HelpCmd 'validate'
+    Write-HelpBody 'Structural checks for chroma.json (entry, pkg\, plugins). JSON Schema: chroma.sh on macOS/Linux.'
+    Write-HelpKv 'When' 'Before dev or build on Windows'
 
-    serve [--port <n>] [--dir <path>]
-        Serves the compiled build output (chroma.json outDir, default
-        dist\) over HTTP with correct MIME types (.wasm, .chr, etc.) and
-        no hot-reload. Run chroma build first. Simulates deploying dist\
-        to a static host without nginx.
+    Write-HelpCmd 'add <lib-id> [--list] [--force] [--dry-run] [--registry <path>]'
+    Write-HelpBody 'Vendor a legacy UMD/CDN library. See chroma add --help.'
+    Write-HelpKv 'When' 'Not for first-party plugins (use install + new)'
 
-    build
-        Compiles and packages the current app per chroma.json. Output goes
-        to chroma.json's outDir (default: dist/).
+    Write-HelpCmd 'help | --help | -h'
+    Write-HelpBody 'Show this help.'
 
-    validate
-        Checks chroma.json for required fields and on-disk paths (entry,
-        build.jsEntry, pkg/, plugins/). JSON Schema validation is available
-        on macOS/Linux via chroma.sh validate.
+    Write-HelpCmd '--version | -v'
+    Write-HelpBody 'Print CLI version only.'
 
-    add <lib-id> [--list] [--force] [--dry-run] [--registry <path>]
-        Install a legacy library from the workspace registry into the current
-        app (plugins/ + chroma.json legacyLibraries). See chroma add --help.
+    Write-HelpSection 'TEMPLATES'
+    Write-HelpCmd 'static'
+    Write-HelpBody 'Flat HTML/JS; WASM inlined into chroma.js.'
+    Write-HelpCmd 'dynamic'
+    Write-HelpBody 'ES modules; esbuild bundle; optional engine.rebuildWasm.'
+    Write-HelpCmd 'standard'
+    Write-HelpBody 'Dynamic plus Chroma-Fs demo; dev.desktop default on.'
+    Write-HelpBody 'All templates vendor pkg\. dev/build use $env:CHROMA_HOME\bin\engine.exe — no server copied into the project.'
 
-    help, --help, -h
-        Show this message.
+    Write-HelpSection 'ENVIRONMENT'
+    Write-HelpCmd 'CHROMA_HOME'
+    Write-HelpBody 'Install root (default $HOME\.chroma): bin\, engine-src\, templates\, plugins\.'
+    Write-HelpCmd 'CHROMA_DEV_RELOAD'
+    Write-HelpBody '1 enables live reload for browser dev; 0 disables (Desktop develop).'
+    Write-HelpCmd 'NO_COLOR | CHROMA_NO_COLOR'
+    Write-HelpBody 'Disables color in help output when set.'
 
-    --version, -v
-        Print the CLI version.
-
-TEMPLATES
-    static
-        Flat HTML/JS files, no bundler, no module graph. build minifies the
-        source files as written; the engine runtime (pkg\) is vendored,
-        never recompiled, and its .wasm is inlined as base64 into a single
-        minified chroma.js — no .wasm file ships in the output.
-
-    dynamic
-        ES modules across multiple files. build bundles the module graph
-        with esbuild and, when engine.rebuildWasm is true in chroma.json,
-        recompiles the engine to WASM before packaging the output.
-
-    standard
-        Like dynamic, but includes a full Chroma-Fs file explorer demo,
-        chroma-fs.json, plugins/loader.js, and npm scripts fs:init / fs:link.
-        Opens Chroma Desktop in develop mode by default (dev.desktop: true).
-
-    All templates only vendor a pkg\ directory (the compiled engine:
-    chroma.js + chroma_bg.wasm) at the project root — that's all a project
-    needs at runtime. dev and build serve files through the engine.exe
-    binary installed at `$env:CHROMA_HOME\bin; no server binary is copied
-    into the project.
-
-ENVIRONMENT
-    CHROMA_DEV_RELOAD
-        1 (default for browser `chroma dev`) enables engine hot-reload.
-        Set to 0 to disable (used automatically for Chroma Desktop develop).
-
-    CHROMA_HOME
-        Install root (default: `$HOME\.chroma). Holds bin\ (chroma.ps1,
-        chroma.cmd, engine.exe), engine-src\ (the compiled engine — plus
-        its Rust source, when installed from a full Chroma checkout, for
-        recompiling) and templates\ (static, dynamic, standard), and plugins\ (chroma-fs).
-
-EXIT STATUS
-    0 on success, 1 on usage error (missing chroma.json, invalid template,
-    missing dependency, existing directory, etc.).
-"@ | Write-Host
+    Write-HelpSection 'EXIT STATUS'
+    Write-HelpBody '0 on success; 1 on usage errors (missing chroma.json, invalid template, etc.).'
+    Write-Host ''
 }
 
 function Assert-Node {

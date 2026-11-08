@@ -175,120 +175,170 @@ install_version_file() {
     fi
 }
 
+# ── Help output (colors on TTY; plain when piped or NO_COLOR) ────────────────
+c_bold=$'\033[1m'
+c_accent=$'\033[96m'
+
+_chroma_help_color() {
+    [ -n "${CHROMA_NO_COLOR:-}" ] && return 1
+    [ -n "${NO_COLOR:-}" ] && return 1
+    [ -t 1 ]
+}
+
+_help_rule() {
+    if _chroma_help_color; then
+        printf '%s%s%s\n' "$c_dim" '────────────────────────────────────────────────────────' "$c_reset"
+    else
+        printf '%s\n' '----------------------------------------'
+    fi
+}
+
+_help_section() {
+    local title="$1"
+    if _chroma_help_color; then
+        printf '\n%s│ %s%s%s%s\n' "$c_dim" "$c_bold" "$title" "$c_reset" "$c_dim│$c_reset"
+    else
+        printf '\n[%s]\n' "$title"
+    fi
+}
+
+_help_cmd() {
+    if _chroma_help_color; then
+        printf '\n  %s%s%s\n' "$c_accent" "$1" "$c_reset"
+    else
+        printf '\n  %s\n' "$1"
+    fi
+}
+
+_help_body() {
+    if _chroma_help_color; then
+        printf '      %s%s%s\n' "$c_dim" "$1" "$c_reset"
+    else
+        printf '      %s\n' "$1"
+    fi
+}
+
+_help_kv() {
+    if _chroma_help_color; then
+        printf '      %s%s:%s %s\n' "$c_bold" "$1" "$c_reset" "$2"
+    else
+        printf '      %s: %s\n' "$1" "$2"
+    fi
+}
+
 usage() {
-    cat <<'EOF'
-NAME
-    chroma - CLI for the Chroma WASM engine
+    local ver; ver="$(chroma_version_raw)"
+    if _chroma_help_color; then
+        printf '%s%schroma%s %s— CLI for the Chroma WASM engine%s  %s(v%s)%s\n' \
+            "$c_bold" "$c_accent" "$c_reset" "$c_bold" "$c_reset" "$c_dim" "$ver" "$c_reset"
+    else
+        printf 'chroma — CLI for the Chroma WASM engine (v%s)\n' "$ver"
+    fi
+    _help_body 'Run chroma <command> [options] inside an app directory unless noted.'
+  _help_rule
 
-USAGE
-    chroma <command> [options]
+    _help_section 'USAGE'
+    _help_cmd 'chroma <command> [options]'
+    _help_kv 'Tip' 'chroma help | less — colors are omitted when stdout is not a terminal'
 
-COMMANDS
-    install [--no-rebase-root]
-        Provisions the local toolchain (Rust, wasm32-unknown-unknown target,
-        wasm-pack, dev-server binary) and installs the `chroma` command on
-        the user's PATH. Run from a checkout of the repo (cli/chroma.sh).
+    _help_section 'COMMANDS'
 
-        By default, every run wipes $CHROMA_HOME and rebuilds it from
-        scratch (a clean reinstall). Pass --no-rebase-root to update in
-        place instead, without deleting $CHROMA_HOME first.
+    _help_cmd 'install [--no-rebase-root]'
+    _help_body 'Provision ~/.chroma: engine binary, templates, pkg/, plugins, and chroma on PATH.'
+    _help_kv 'When' 'First setup, after pulling a newer Chroma checkout, or to fix a broken install'
+    _help_kv 'Why' 'new, dev, and build all expect $CHROMA_HOME/bin (run from repo: ./cli/chroma.sh install)'
+    _help_kv 'Default' 'Wipes $CHROMA_HOME and reinstalls (clean slate)'
+    _help_kv 'Flag' '--no-rebase-root — update in place without deleting $CHROMA_HOME first'
+    _help_kv 'Example' 'chroma install --no-rebase-root'
 
-    new <name> [--template static|dynamic|standard]
-        Scaffolds a new app into ./<name>.
-        --template   static (default) | dynamic | standard
+    _help_cmd 'new <name> [--template static|dynamic|standard]'
+    _help_body 'Scaffold ./<name> from a template (default: static). Alias: init.'
+    _help_kv 'When' 'Starting a project; templates set mode, plugins, and desktop dev defaults'
+    _help_kv 'Why' 'Copies pkg/, rewrites name fields, vendors template plugins'
+    _help_kv 'Example' 'chroma new my-app --template dynamic'
 
-    dev [--port <n>] [--no-desktop] [--static]
-        Serves the current app at http://localhost:<port>. Requires
-        chroma.json in the working directory. Default port: chroma.json's
-        dev.port, or 4173.
+    _help_cmd 'dev [--port <n>] [--no-desktop] [--static] [--no-reload | --reload]'
+    _help_body 'Serve the project root with the engine dev server (needs chroma.json).'
+    _help_kv 'When' 'Day-to-day editing; default port from chroma.json dev.port or 4173'
+    _help_kv 'Why' 'Serves sources as native ES modules (.chr as JavaScript); browser dev uses live reload'
+    _help_kv 'Live reload' 'Full page refresh on .chr and related changes; off for Chroma Desktop develop'
+    _help_kv '--no-desktop' 'Browser only, even when dev.desktop is true (dynamic/standard default)'
+    _help_kv '--static' 'Serve outDir (default dist/) like chroma serve — run chroma build first'
+    _help_kv 'Example' 'chroma dev --port 5173'
 
-        Browser dev enables hot-reload (full page refresh on .chr and
-        related source changes). Chroma Desktop develop mode disables
-        reload (CHROMA_DEV_RELOAD=0, engine --no-reload).
+    _help_cmd 'serve [--port <n>] [--dir <path>]'
+    _help_body 'Serve compiled outDir over HTTP — production-like static host, no live reload.'
+    _help_kv 'When' 'After chroma build; smoke-test dist/ before upload or handoff'
+    _help_kv 'Why' 'Correct MIME types (.wasm, .chr); no dev-reload script injection'
+    _help_kv 'Example' 'chroma build && chroma serve --dir dist'
 
-        Dynamic apps with dev.desktop=true (the dynamic template default)
-        also launch Chroma Desktop in develop mode — the project opens
-        directly for testing, without the import library menu. Pass
-        --no-desktop to serve in the browser only.
+    _help_cmd 'build'
+    _help_body 'Compile and package into chroma.json outDir (default dist/; folder wiped each run).'
+    _help_kv 'When' 'Before deploy, chroma serve, zip import into Chroma Desktop, or CI artifacts'
+    _help_kv 'Why' 'static: minify + inline WASM into chroma.js; dynamic: esbuild bundle + optional zip'
 
-        --static serves chroma.json outDir (default dist/) with hot-reload
-        off — same as `chroma serve` (smoke-test a production build).
+    _help_cmd 'validate [--strict] [--no-schema]'
+    _help_body 'Validate chroma.json (and chroma-fs.json when present) before dev or build.'
+    _help_kv 'When' 'Locally or in CI; needs Node for JSON Schema when a catalog is found'
+    _help_kv 'Why' 'Catches schema errors, missing entry/pkg/plugins/jsEntry early'
+    _help_kv 'Catalog' '$CHROMA_SCHEMAS, $CHROMA_HOME/schemas, cli/schemas, or monorepo docs catalog'
 
-    serve [--port <n>] [--dir <path>]
-        Serves the compiled build output (chroma.json outDir, default
-        dist/) over HTTP with correct MIME types (.wasm, .chr, etc.) and
-        no hot-reload. Run `chroma build` first. Simulates deploying dist/
-        to a static host without nginx.
+    _help_cmd 'fs init'
+    _help_body 'Create chroma-fs.json (indexeddb for static, filesystem for dynamic).'
+    _help_kv 'When' 'Adding Chroma-Fs storage to an app that lacks chroma-fs.json'
 
-    build
-        Compiles and packages the current app per chroma.json. Output goes
-        to chroma.json's outDir (default: dist/).
+    _help_cmd 'fs link'
+    _help_body 'Build Chroma-Fs from the workspace and npm-link @chroma/fs (needs Node).'
+    _help_kv 'When' 'standard template or custom apps using the file explorer package'
 
-    validate [--strict] [--no-schema]
-        Checks chroma.json (and optional chroma-fs.json / plugin manifests)
-        for schema and on-disk consistency before dev or build. Uses JSON
-        Schema from $CHROMA_SCHEMAS, the CLI schemas/ bundle, the monorepo
-        targ-apps-docs catalog, or structural checks only when no schema
-        catalog is found.
+    _help_cmd 'add <lib-id> [--list] [--force] [--dry-run] [--registry <path>]'
+    _help_body 'Vendor a legacy UMD/CDN library from the registry into the current app.'
+    _help_kv 'When' 'Globals/CDN scripts — not for first-party plugins (use install + new)'
+    _help_kv 'More' 'chroma add --help'
 
-    fs init
-        Create chroma-fs.json for the current app (backend defaults depend
-        on static vs dynamic mode in chroma.json).
+    _help_cmd 'help | --help | -h'
+    _help_body 'Show this help (also when the command is omitted on error).'
 
-    fs link
-        Build Chroma-Fs from the workspace and link @chroma/fs into the
-        current project (npm install file:...).
+    _help_cmd '--version | -v'
+    _help_body 'Print CLI version only (no startup banner).'
 
-    add <lib-id> [--list] [--force] [--dry-run] [--registry <path>]
-        Vendor a registry entry (Chroma/cli/legacy-libs/registry.json) into the
-        current app. First-party plugins: prefer install + new/copy; add is for
-        monorepo workspace packages. CDN/UMD libs use registry files[], not
-        plugins/. Run chroma add --help for details.
+    _help_section 'TEMPLATES'
 
-    help, --help, -h
-        Show this message.
+    _help_cmd 'static'
+    _help_body 'Flat HTML/JS; no bundler. build minifies as written; WASM inlined into chroma.js.'
+    _help_kv 'When' 'Simple pages, minimal toolchain, single-file engine output'
 
-    --version, -v
-        Print the CLI version.
+    _help_cmd 'dynamic'
+    _help_body 'ES modules; build bundles with esbuild; optional engine.rebuildWasm.'
+    _help_kv 'When' 'Component-style apps under src/**/*.chr'
 
-TEMPLATES
-    static
-        Flat HTML/JS files, no bundler, no module graph. `build` minifies
-        the source files as written; the engine runtime (pkg/) is vendored,
-        never recompiled, and its .wasm is inlined as base64 into a single
-        minified chroma.js — no .wasm file ships in the output.
+    _help_cmd 'standard'
+    _help_body 'Dynamic plus Chroma-Fs demo, chroma-fs.json, fs npm scripts; dev.desktop default on.'
+    _help_kv 'When' 'Explore filesystem UI and Desktop develop out of the box'
 
-    dynamic
-        ES modules across multiple files. `build` bundles the module graph
-        with esbuild and, when engine.rebuildWasm is true in chroma.json,
-        recompiles the engine to WASM before packaging the output.
+    _help_body 'All templates vendor pkg/ (chroma.js + chroma_bg.wasm). dev/build use $CHROMA_HOME/bin/engine — nothing server-related is copied into the project.'
 
-    standard
-        Like dynamic, but includes a full Chroma-Fs file explorer demo,
-        chroma-fs.json, plugins/loader.js, and npm scripts fs:init / fs:link.
-        Opens Chroma Desktop in develop mode by default (dev.desktop: true).
+    _help_section 'ENVIRONMENT'
 
-    All templates only vendor a `pkg/` directory (the compiled engine:
-    chroma.js + chroma_bg.wasm) at the project root — that's all a project
-    needs at runtime. `dev` and `build` serve files through the `engine`
-    binary installed at $CHROMA_HOME/bin; no server binary is copied into
-    the project.
+    _help_cmd 'CHROMA_HOME'
+    _help_body 'Install root (default ~/.chroma): bin/, engine-src/, templates/, plugins/, schemas/.'
 
-ENVIRONMENT
-    CHROMA_DEV_RELOAD
-        1 (default for browser `chroma dev`) enables engine hot-reload.
-        Set to 0 to disable (used automatically for Chroma Desktop develop).
+    _help_cmd 'CHROMA_DEV_RELOAD'
+    _help_body '1 (default) enables live reload for browser chroma dev; 0 disables (Desktop develop sets this automatically).'
 
-    CHROMA_HOME
-        Install root (default: ~/.chroma). Holds bin/ (chroma, engine),
-        engine-src/ (the compiled engine — plus its Rust source, when
-        installed from a full Chroma checkout, for recompiling) and
-        templates/ (static, dynamic, standard), and plugins/ (chroma-fs).
+    _help_cmd 'CHROMA_SCHEMAS'
+    _help_body 'Directory containing chroma/chroma.schema.json for validate.'
 
-EXIT STATUS
-    0 on success, 1 on usage error (missing chroma.json, invalid template,
-    missing dependency, existing directory, etc.).
-EOF
+    _help_cmd 'CHROMA_LOG_LEVEL'
+    _help_body 'CLI log verbosity: error | warn | log (default) | debug | verbose.'
+
+    _help_cmd 'NO_COLOR | CHROMA_NO_COLOR'
+    _help_body 'Any non-empty value disables ANSI colors in help and log output.'
+
+    _help_section 'EXIT STATUS'
+    _help_body '0 on success.'
+    _help_body '1 on usage errors: missing chroma.json, invalid template, missing engine/node/pkg, name collision, validation failure, etc.'
+    printf '\n'
 }
 
 # ── JSON helpers (chroma.json is a small, fixed schema we control: jq is
