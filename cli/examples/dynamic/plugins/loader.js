@@ -3,6 +3,14 @@
  * Each plugin folder includes chroma.plugin.json (entry, hooks, capabilities).
  * Plugin packages are vendored under plugins/<name>/ by `chroma new`.
  */
+/**
+ * `import()` resolves relative to the file that calls it (plugins/loader.js in dev), while `fetch` resolves relative to
+ * the page. Resolve plugin module URLs against the page so both agree in dev and in the bundle.
+ */
+function pageUrl(path) {
+    return new URL(path, document.baseURI).href;
+}
+
 export async function loadPlugins(options = {}) {
     const { manifestUrl = "./chroma.json", pluginsRoot = "./plugins" } = options;
     const manifest = await fetch(manifestUrl, { cache: "no-store" }).then((r) => r.json());
@@ -26,7 +34,7 @@ export async function loadPlugins(options = {}) {
         }
 
         const entry = meta.entry ?? "index.js";
-        const mod = await import(`${base}/${entry}`);
+        const mod = await import(pageUrl(`${base}/${entry}`));
         const key = meta.loadAs ?? name.replace(/^chroma-/, "");
 
         if (meta.hooks?.styles) {
@@ -53,7 +61,7 @@ export async function loadPlugins(options = {}) {
 /** Fallback until chroma-fs ships chroma.plugin.json */
 async function loadLegacyPlugin(name, base) {
     if (name === "chroma-fs") {
-        const { createStorage } = await import(`${base}/index.js`);
+        const { createStorage } = await import(pageUrl(`${base}/index.js`));
         return {
             key: "fs",
             value: await createStorage({ configPath: "./chroma-fs.json" }),

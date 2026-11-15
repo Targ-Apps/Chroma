@@ -138,22 +138,25 @@ function Show-Usage {
     Write-HelpBody 'Serve the project root with the engine dev server (needs chroma.json).'
     Write-HelpKv 'When' 'Day-to-day editing; default port from chroma.json or 4173'
     Write-HelpKv 'Why' 'Serves sources as ES modules; browser dev uses live reload'
+    Write-HelpKv 'Plugins' 'Build plugins listed in chroma.json (chroma-mdx, chroma-blog, ...) compile .mdx on request and regenerate their files on change'
     Write-HelpKv 'Live reload' 'Full page refresh on source changes; off for Chroma Desktop develop'
     Write-HelpKv '--no-desktop' 'Browser only when dev.desktop is true'
-    Write-HelpKv '--static' 'Serve outDir like chroma serve — run chroma build first'
+    Write-HelpKv '--static' 'Same as chroma preview — run chroma build first'
 
-    Write-HelpCmd 'serve [--port <n>] [--dir <path>]'
-    Write-HelpBody 'Serve compiled outDir — production-like static host, no live reload.'
+    Write-HelpCmd 'preview [--port <n>] [--dir <path>]'
+    Write-HelpBody 'Serve the build output (outDir) like a static host — no hot reload, no injection.'
     Write-HelpKv 'When' 'After chroma build; smoke-test dist\ before deploy'
-    Write-HelpKv 'Why' 'Correct MIME types; no dev-reload script injection'
+    Write-HelpKv 'Why' 'Correct MIME types; same files a static host would serve'
+    Write-HelpKv 'Alias' 'serve'
 
     Write-HelpCmd 'build'
-    Write-HelpBody 'Package into chroma.json outDir (default dist\; wiped each run).'
-    Write-HelpKv 'When' 'Before deploy, serve, or Desktop zip import'
+    Write-HelpBody 'Compile and package into chroma.json outDir (default dist\; wiped each run).'
+    Write-HelpKv 'When' 'Before deploy, preview, or Desktop zip import'
+    Write-HelpKv 'Needs' 'Only the chroma CLI: no Node, no npm, no node_modules'
 
     Write-HelpCmd 'validate'
-    Write-HelpBody 'Structural checks for chroma.json (entry, pkg\, plugins). JSON Schema: chroma.sh on macOS/Linux.'
-    Write-HelpKv 'When' 'Before dev or build on Windows'
+    Write-HelpBody 'Validate chroma.json (schema + structure); warns about node_modules, package.json dependencies and compile scripts\.'
+    Write-HelpKv 'When' 'Before dev or build'
 
     Write-HelpCmd 'add <lib-id> [--list] [--force] [--dry-run] [--registry <path>]'
     Write-HelpBody 'Vendor a legacy UMD/CDN library. See chroma add --help.'
@@ -169,10 +172,10 @@ function Show-Usage {
     Write-HelpCmd 'static'
     Write-HelpBody 'Flat HTML/JS; WASM inlined into chroma.js.'
     Write-HelpCmd 'dynamic'
-    Write-HelpBody 'ES modules; esbuild bundle; optional engine.rebuildWasm.'
+    Write-HelpBody 'ES modules; bundled by the Chroma compiler; optional engine.rebuildWasm.'
     Write-HelpCmd 'standard'
     Write-HelpBody 'Dynamic plus Chroma-Fs demo; dev.desktop default on.'
-    Write-HelpBody 'All templates vendor pkg\. dev/build use $env:CHROMA_HOME\bin\engine.exe — no server copied into the project.'
+    Write-HelpBody 'All templates vendor pkg\. dev/preview/build use $env:CHROMA_HOME\bin\engine.exe — no package.json, no node_modules, no build scripts in the project.'
 
     Write-HelpSection 'ENVIRONMENT'
     Write-HelpCmd 'CHROMA_HOME'
@@ -187,99 +190,11 @@ function Show-Usage {
     Write-Host ''
 }
 
-function Assert-Node {
-    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Fail "Node.js is required for this step (bundling/minifying). Install it from https://nodejs.org and try again."
-    }
-    if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
-        Fail "npx not found (ships with npm). Install/update Node.js."
-    }
-}
-
-function Invoke-Esbuild {
-    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$EsbuildArgs)
-    npx --yes esbuild --loader:.chr=js @EsbuildArgs
-}
-
 function Warn-LegacyJsInSrc {
     if (-not (Test-Path "src")) { return }
     Get-ChildItem -Path "src" -Filter "*.js" -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
         Warn "Legacy .js under src/: $($_.FullName.Substring((Get-Location).Path.Length + 1)) — use .chr for Chroma app source (see docs/chroma/chr-format)"
     }
-}
-
-# Generates jsconfig.json if the project doesn't already have one, so
-# VSCode-family editors resolve types from pkg/chroma.d.ts (hover docs,
-# autocomplete) without any manual setup. Never overwrites an existing file.
-function Ensure-JsConfig {
-    if (Test-Path "jsconfig.json") { return }
-    Info "jsconfig.json not found, generating one for editor IntelliSense..."
-    $jsconfig = @'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "allowJs": true,
-    "checkJs": false
-  },
-  "include": ["**/*.js", "**/*.chr"],
-  "exclude": ["node_modules", "dist"]
-}
-'@
-    Set-Content -Path "jsconfig.json" -Value $jsconfig
-}
-
-# Inlines chroma_bg.wasm as base64 directly into chroma.js (replacing the
-# `new URL('chroma_bg.wasm', import.meta.url)` + fetch path with an embedded
-# byte array) and minifies the result. Used by static builds so the shipped
-# engine is a single JS file — no .wasm request, no separate artifact.
-function Inline-WasmJs {
-    param([string]$VendorDir, [string]$OutDir)
-    Assert-Node
-    New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
-
-    $jsSrc = Join-Path $VendorDir "chroma.js"
-    $wasmSrc = Join-Path $VendorDir "chroma_bg.wasm"
-    $js = Get-Content -Raw -Path $jsSrc
-    $wasmB64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($wasmSrc))
-    $marker = "new URL('chroma_bg.wasm', import.meta.url)"
-    if (-not $js.Contains($marker)) {
-        Fail "chroma.js: wasm URL marker not found, cannot inline wasm"
-    }
-    $inline = "Uint8Array.from(atob('$wasmB64'), c => c.charCodeAt(0))"
-    $js = $js.Replace($marker, $inline)
-
-    $inlined = Join-Path ([IO.Path]::GetTempPath()) "$([Guid]::NewGuid()).js"
-    Set-Content -Path $inlined -Value $js -NoNewline
-    npx --yes esbuild $inlined --minify --outfile="$(Join-Path $OutDir "chroma.js")"
-    Remove-Item -Force $inlined
-}
-
-# Minifies HTML (strips comments and whitespace) and, optionally, replaces a
-# literal text reference (used to point <script src> at the bundle output).
-function Minify-Html {
-    param([string]$Src, [string]$Dst, [string]$From = "", [string]$To = "")
-    $html = Get-Content -Raw -Path $Src
-    if ($From) { $html = $html.Replace($From, $To) }
-    $html = [regex]::Replace($html, '<!--[\s\S]*?-->', '')
-    $html = [regex]::Replace($html, '>\s+<', '><')
-    $html = [regex]::Replace($html, '[ \t]+', ' ')
-    $html = [regex]::Replace($html, '\n\s*', '')
-    $dstDir = Split-Path $Dst -Parent
-    if ($dstDir) { New-Item -ItemType Directory -Force -Path $dstDir | Out-Null }
-    Set-Content -Path $Dst -Value $html.Trim() -NoNewline
-}
-
-function Remove-DistMetadata {
-    param([string]$Dir)
-    Get-ChildItem -Path $Dir -Force -Recurse -Directory -Filter '.git' -ErrorAction SilentlyContinue |
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    Get-ChildItem -Path $Dir -Force -Recurse -File -Filter '.gitignore' -ErrorAction SilentlyContinue |
-        Remove-Item -Force -ErrorAction SilentlyContinue
-    Get-ChildItem -Path $Dir -Force -Recurse -File -Filter '.env*' -ErrorAction SilentlyContinue |
-        Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
 function Set-JsonName {
@@ -325,18 +240,7 @@ function Resolve-PluginSrc {
 function Install-Plugins {
     New-Item -ItemType Directory -Force -Path $ChromaPlugins | Out-Null
     $fsSrc = Resolve-ChromaFsSrc
-    if ($fsSrc) {
-        Info "Building Chroma-Fs plugin from $fsSrc..."
-        Push-Location $fsSrc
-        try {
-            npm install --silent | Out-Null
-            npm run build | Out-Null
-        } catch {
-            Warn "Chroma-Fs build failed — plugin install skipped."
-            Pop-Location
-            return
-        }
-        Pop-Location
+    if ($fsSrc -and (Test-Path (Join-Path $fsSrc "dist"))) {
         $dest = Join-Path $ChromaPlugins "chroma-fs"
         if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
         New-Item -ItemType Directory -Force -Path $dest | Out-Null
@@ -349,7 +253,7 @@ function Install-Plugins {
         Copy-Item -Recurse -Force (Join-Path $CliDir "plugins/chroma-fs") $dest
         Ok "Chroma-Fs plugin copied from $(Join-Path $CliDir 'plugins/chroma-fs')"
     } else {
-        Warn "Chroma-Fs source not found — plugin install skipped."
+        Warn "Chroma-Fs build not found — plugin install skipped."
     }
 
     foreach ($plugin in @("chroma-style", "chroma-router", "chroma-t2t")) {
@@ -419,6 +323,9 @@ function Resolve-DesktopBin {
     return $null
 }
 
+# Global build plugins that ship inside the engine binary (chroma.json "plugins" may list them).
+$BuildPlugins = @("chroma-mdx", "chroma-blog", "chroma-seo", "chroma-icons", "chroma-style")
+
 function Vendor-Plugins {
     param([string]$Project)
     $manifestPath = Join-Path $Project "chroma.json"
@@ -428,6 +335,7 @@ function Vendor-Plugins {
     foreach ($plugin in $cfg.plugins) {
         $src = Join-Path $ChromaPlugins $plugin
         if (-not (Test-Path $src)) {
+            if ($BuildPlugins -contains $plugin) { continue }
             Fail "Plugin '$plugin' not found at $src. Run 'chroma install'."
         }
         $destRoot = Join-Path $Project "plugins"
@@ -454,12 +362,6 @@ function Install-Chroma {
     if (-not $noRebaseRoot -and (Test-Path $ChromaHome)) {
         Info "Wiping $ChromaHome for a clean reinstall (use --no-rebase-root to update in place)..."
         Remove-Item -Recurse -Force $ChromaHome
-    }
-
-    if (Get-Command node -ErrorAction SilentlyContinue) {
-        Ok "Node.js detected ($(node --version))"
-    } else {
-        Warn "Node.js not found. Required for 'chroma build' (bundling/minifying via esbuild). Install it from https://nodejs.org."
     }
 
     if (Test-Path $ChromaEngineSrc) { Remove-Item -Recurse -Force $ChromaEngineSrc }
@@ -524,6 +426,7 @@ function Install-Chroma {
     Ok "engine.exe ready at $ChromaEngineBin"
 
     Info "Copying templates..."
+    if (Test-Path $ChromaTemplates) { Remove-Item -Recurse -Force $ChromaTemplates }
     New-Item -ItemType Directory -Force -Path $ChromaTemplates | Out-Null
     Copy-Item -Recurse -Force (Join-Path $CliDir "examples/*") $ChromaTemplates
     Ok "Templates ready at $ChromaTemplates (static, dynamic, standard)"
@@ -536,6 +439,15 @@ function Install-Chroma {
         $legacySchema = Join-Path $CliDir "legacy-libs/registry.schema.json"
         if (Test-Path $legacySchema) {
             Copy-Item -Force $legacySchema (Join-Path $legacyDest "registry.schema.json")
+        }
+        $pluginsReg = Join-Path $CliDir "legacy-libs/plugins-registry.json"
+        if (Test-Path $pluginsReg) {
+            Copy-Item -Force $pluginsReg (Join-Path $legacyDest "plugins-registry.json")
+        }
+        $legacyVendor = Join-Path $CliDir "legacy-libs/vendor"
+        if (Test-Path $legacyVendor) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $legacyDest "vendor") | Out-Null
+            Copy-Item -Recurse -Force (Join-Path $legacyVendor "*") (Join-Path $legacyDest "vendor")
         }
         Ok "Legacy library registry installed at $legacyDest\registry.json"
     }
@@ -612,7 +524,6 @@ function New-ChromaApp {
     New-Item -ItemType Directory -Force -Path $pkgDest | Out-Null
     Copy-Item -Recurse -Force (Join-Path $ChromaEngineSrc "pkg/*") $pkgDest
 
-    Set-JsonName (Join-Path $name "package.json") $name
     Set-JsonName (Join-Path $name "chroma.json") $name
     Vendor-Plugins -Project $name
 
@@ -620,8 +531,9 @@ function New-ChromaApp {
     Write-Host "  cd $name; chroma dev"
 }
 
-# ── serve (production-like static preview) ─────────────────────────────────────
-function Invoke-ChromaServe {
+# ── preview / serve (production-like static preview) ──────────────────────────
+# `chroma serve` is the older name of `chroma preview` and stays as an alias.
+function Invoke-ChromaPreview {
     param([string[]]$Arguments)
 
     if (-not (Test-Path "chroma.json")) {
@@ -631,41 +543,30 @@ function Invoke-ChromaServe {
         Fail "engine binary not found at $ChromaEngineBin. Run 'chroma install'."
     }
 
-    $cfg = Get-Content -Raw "chroma.json" | ConvertFrom-Json
-    $port = if ($cfg.dev.port) { $cfg.dev.port } else { 4173 }
-    $outDir = if ($cfg.outDir) { $cfg.outDir } else { "dist" }
-    $entry = if ($cfg.entry) { $cfg.entry } else { "index.html" }
-
+    $engineArgs = @("preview")
     for ($i = 0; $i -lt $Arguments.Count; $i++) {
         $arg = $Arguments[$i]
-        if ($arg -eq "--port") {
-            $port = $Arguments[$i + 1]
+        if ($arg -eq "--port" -or $arg -eq "--dir") {
+            if ($i + 1 -ge $Arguments.Count) { Fail "$arg needs a value" }
+            $engineArgs += @($arg, $Arguments[$i + 1])
             $i++
-        } elseif ($arg -match '^--port=(.*)$') {
-            $port = $Matches[1]
-        } elseif ($arg -eq "--dir") {
-            $outDir = $Arguments[$i + 1]
-            $i++
-        } elseif ($arg -match '^--dir=(.*)$') {
-            $outDir = $Matches[1]
+        } elseif ($arg -match '^--(port|dir)=(.*)$') {
+            $engineArgs += @("--$($Matches[1])", $Matches[2])
         } elseif ($arg -in @("--static", "--no-desktop", "--no-hot-reload", "--no-reload", "--hot-reload", "--reload")) {
             continue
         } else {
-            Fail "Unknown option for 'chroma serve': $arg (use --port <n> or --dir <path>)"
+            Fail "Unknown option for 'chroma preview': $arg (use --port <n> or --dir <path>)"
         }
     }
 
-    if (-not (Test-Path $outDir -PathType Container)) {
-        Fail "Build output not found at $outDir/. Run 'chroma build' first."
-    }
-    $entryPath = Join-Path $outDir $entry
-    if (-not (Test-Path $entryPath)) {
-        Fail "$entryPath not found. Run 'chroma build' or check chroma.json entry/outDir."
-    }
-
-    Info "Serving $outDir/ at http://127.0.0.1:${port}/ (production-like — no hot-reload)"
     $env:CHROMA_DEV_RELOAD = "0"
-    & $ChromaEngineBin --port $port --dir $outDir --no-reload
+    & $ChromaEngineBin @engineArgs
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+function Invoke-ChromaServe {
+    param([string[]]$Arguments)
+    Invoke-ChromaPreview -Arguments $Arguments
 }
 
 # ── dev ──────────────────────────────────────────────────────────────────────
@@ -686,7 +587,7 @@ function Invoke-ChromaDev {
 
     if ($Arguments -contains "--static") {
         $filtered = $Arguments | Where-Object { $_ -ne "--static" }
-        Invoke-ChromaServe -Arguments $filtered
+        Invoke-ChromaPreview -Arguments $filtered
         return
     }
 
@@ -716,7 +617,7 @@ function Invoke-ChromaDev {
     }
 
     $reloadArg = if (Test-ChromaDevReloadEnabled) { "--reload" } else { "--no-reload" }
-    & $ChromaEngineBin --port $port --dir . $reloadArg
+    & $ChromaEngineBin dev --port $port --dir . $reloadArg
 }
 
 function Test-ChromaDevReloadEnabled {
@@ -754,7 +655,7 @@ function Launch-DevWithDesktop {
 
     Info "Starting dev server on port $Port (hot-reload disabled for Desktop)..."
     $env:CHROMA_DEV_RELOAD = "0"
-    $engine = Start-Process -FilePath $ChromaEngineBin -ArgumentList @("--port", $Port, "--dir", ".", "--no-reload") -PassThru -WindowStyle Hidden
+    $engine = Start-Process -FilePath $ChromaEngineBin -ArgumentList @("dev", "--port", $Port, "--dir", ".", "--no-reload") -PassThru -WindowStyle Hidden
 
     try {
         Start-Sleep -Milliseconds 400
@@ -768,116 +669,26 @@ function Launch-DevWithDesktop {
 }
 
 # ── build ────────────────────────────────────────────────────────────────────
+# The whole build (bundle, minify, HTML, assets, build plugins, zip) is done by
+# the engine binary: no Node, no npm, no esbuild.
 function Invoke-ChromaBuild {
+    param([string[]]$Arguments)
     if (-not (Test-Path "chroma.json")) { Fail "chroma.json not found in the current directory." }
-    $cfg = Get-Content -Raw "chroma.json" | ConvertFrom-Json
-    $outDir = if ($cfg.outDir) { $cfg.outDir } else { "dist" }
-
-    Ensure-JsConfig
-
-    if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
-    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-
-    switch ($cfg.mode) {
-        "static" { Build-Static -Cfg $cfg -OutDir $outDir }
-        "dynamic" { Build-Dynamic -Cfg $cfg -OutDir $outDir }
-        default { Fail "Unknown mode in chroma.json: '$($cfg.mode)'" }
+    if (-not (Test-Path $ChromaEngineBin)) {
+        Fail "engine binary not found at $ChromaEngineBin. Run 'chroma install'."
     }
-}
-
-function Build-Static {
-    param($Cfg, [string]$OutDir)
-    Assert-Node
-
-    Info "Building static -> $OutDir/ (source files minified as written)"
-
-    Minify-Html -Src $Cfg.entry -Dst (Join-Path $OutDir $Cfg.entry)
-
-    foreach ($f in $Cfg.build.scripts) {
-        $destDir = Join-Path $OutDir (Split-Path $f -Parent)
-        if ($destDir) { New-Item -ItemType Directory -Force -Path $destDir | Out-Null }
-        Invoke-Esbuild $f --minify --outfile="$(Join-Path $OutDir $f)"
-    }
-    foreach ($f in $Cfg.build.styles) {
-        $destDir = Join-Path $OutDir (Split-Path $f -Parent)
-        if ($destDir) { New-Item -ItemType Directory -Force -Path $destDir | Out-Null }
-        Invoke-Esbuild $f --minify --outfile="$(Join-Path $OutDir $f)"
-    }
-
-    $vendorDir = $Cfg.engine.vendorDir
-    Inline-WasmJs -VendorDir $vendorDir -OutDir (Join-Path $OutDir $vendorDir)
-
-    if (Test-Path "plugins") {
-        Copy-Item -Recurse -Force "plugins" (Join-Path $OutDir "plugins")
-    }
-    if (Test-Path "chroma-fs.json") {
-        Copy-Item -Force "chroma-fs.json" (Join-Path $OutDir "chroma-fs.json")
-    }
-    Copy-Item -Force "chroma.json" (Join-Path $OutDir "chroma.json")
-    Remove-DistMetadata $OutDir
-
-    Ok "Static build ready: $OutDir/ (engine wasm inlined into minified chroma.js, no .wasm file, not recompiled)"
-}
-
-function Build-Dynamic {
-    param($Cfg, [string]$OutDir)
-    Assert-Node
-    if (-not (Get-Command wasm-pack -ErrorAction SilentlyContinue)) { Fail "wasm-pack not found. Run 'chroma install'." }
-
-    $vendorDir = $Cfg.engine.vendorDir
-    $outfile = if ($Cfg.build.outfile) { $Cfg.build.outfile } else { "bundle.js" }
-
-    if ($Cfg.engine.rebuildWasm) {
-        if (-not (Test-Path $ChromaEngineSrc)) { Fail "Engine source not found at $ChromaEngineSrc. Run 'chroma install'." }
-        Info "Recompiling the engine to WASM ($ChromaEngineSrc)..."
-        Push-Location $ChromaEngineSrc
-        wasm-pack build --target web
-        Add-Content -Path (Join-Path (Get-Location).Path "pkg/chroma.js") -Value "`nawait __wbg_init();"
-        Pop-Location
-        if (Test-Path $vendorDir) { Remove-Item -Recurse -Force $vendorDir }
-        New-Item -ItemType Directory -Force -Path $vendorDir | Out-Null
-        Copy-Item -Recurse -Force (Join-Path $ChromaEngineSrc "pkg/*") $vendorDir
-    } else {
-        Warn "engine.rebuildWasm=false: using the engine already compiled at $vendorDir/"
-    }
-
-    Info "Bundling $($Cfg.build.jsEntry) -> $OutDir/$outfile (esbuild, .chr loader, minified)"
-    Invoke-Esbuild $Cfg.build.jsEntry --bundle --format=esm --minify --outfile="$(Join-Path $OutDir $outfile)"
-
-    # wasm-bindgen resolves the .wasm with `new URL(..., import.meta.url)`,
-    # so it must sit next to the packaged bundle.
-    Copy-Item -Force (Join-Path $vendorDir "chroma_bg.wasm") (Join-Path $OutDir "chroma_bg.wasm")
-
-    Minify-Html -Src $Cfg.entry -Dst (Join-Path $OutDir $Cfg.entry) -From $Cfg.build.jsEntry -To $outfile
-
-    if (Test-Path "plugins") {
-        Copy-Item -Recurse -Force "plugins" (Join-Path $OutDir "plugins")
-    }
-    if (Test-Path "chroma-fs.json") {
-        Copy-Item -Force "chroma-fs.json" (Join-Path $OutDir "chroma-fs.json")
-    }
-    Copy-Item -Force "chroma.json" (Join-Path $OutDir "chroma.json")
-    Remove-DistMetadata $OutDir
-
-    Ok "Dynamic build ready: $OutDir/"
-
-    if ($Cfg.package.zip) {
-        $zipPath = "$($Cfg.name).zip"
-        if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
-        Compress-Archive -Path (Join-Path $OutDir "*") -DestinationPath $zipPath
-        Ok "Package ready: $zipPath"
-    }
+    $env:CHROMA_HOME = $ChromaHome
+    & $ChromaEngineBin build @Arguments
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 function Invoke-ChromaAdd {
     param([string[]]$Arguments)
-    Assert-Node
-    $addScript = Join-Path $CliDir "lib/chroma-add.mjs"
-    if (-not (Test-Path $addScript)) {
-        Fail "chroma add helper not found at $addScript (reinstall CLI from repo)."
+    if (-not (Test-Path $ChromaEngineBin)) {
+        Fail "engine binary not found at $ChromaEngineBin. Run 'chroma install'."
     }
     $env:CHROMA_HOME = $ChromaHome
-    & node $addScript @Arguments
+    & $ChromaEngineBin add @Arguments
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
@@ -887,8 +698,8 @@ function Invoke-ChromaFs {
     $sub = if ($Arguments.Count -gt 0) { $Arguments[0] } else { "" }
     switch ($sub) {
         "init" { Invoke-ChromaFsInit }
-        "link" { Invoke-ChromaFsLink }
-        default { Fail "Usage: chroma fs <init|link>" }
+        "link" { Fail "'chroma fs link' was removed: Chroma projects have no npm. Use the chroma-fs plugin (plugins/chroma-fs, copied by 'chroma new')." }
+        default { Fail "Usage: chroma fs init" }
     }
 }
 
@@ -927,31 +738,33 @@ function Invoke-ChromaFsInit {
     }
 }
 
-function Invoke-ChromaFsLink {
-    Assert-Node
-    $fsSrc = Resolve-ChromaFsSrc
-    if (-not $fsSrc) {
-        Fail "Chroma-Fs source not found. Run from the TargApps workspace."
+function Resolve-SchemasDir {
+    foreach ($c in @($env:CHROMA_SCHEMAS, (Join-Path $ChromaHome "schemas"), (Join-Path $CliDir "schemas"))) {
+        if ($c -and (Test-Path (Join-Path $c "chroma/chroma.schema.json"))) { return $c }
     }
+    return $null
+}
 
-    Info "Building Chroma-Fs..."
-    Push-Location $fsSrc
-    npm install --silent
-    npm run build
-    Pop-Location
-
-    if (-not (Test-Path "package.json")) {
-        Fail "package.json not found in the current directory."
+# Chroma projects have no Node, no npm and no node_modules: flag leftovers of the old toolchain.
+function Warn-NodeLeftovers {
+    if (Test-Path "node_modules") {
+        Warn "node_modules/ found: Chroma projects have no node_modules. Delete it; import with relative paths or URLs."
     }
-
-    $pkg = Get-Content -Raw "package.json" | ConvertFrom-Json
-    if (-not $pkg.dependencies) {
-        $pkg | Add-Member -NotePropertyName dependencies -NotePropertyValue ([PSCustomObject]@{})
+    if (Test-Path "package.json") {
+        $raw = (Get-Content -Raw "package.json") -replace "[\r\n]", ""
+        if ($raw -match '"(dependencies|devDependencies|optionalDependencies|peerDependencies)"\s*:\s*\{\s*"') {
+            Warn "package.json declares dependencies: Chroma has no npm. Delete package.json."
+        } elseif ($raw -match '"scripts"\s*:\s*\{[^}]*(npm |npx |node |esbuild|vite|webpack|rollup|tsc)') {
+            Warn "package.json scripts call npm/node tools: use chroma dev, chroma preview and chroma build instead."
+        }
     }
-    $pkg.dependencies | Add-Member -NotePropertyName "@chroma/fs" -NotePropertyValue "file:$fsSrc" -Force
-    $pkg | ConvertTo-Json -Depth 10 | Set-Content -Path "package.json" -Encoding UTF8
-    npm install --silent
-    Ok "@chroma/fs linked from $fsSrc"
+    if (Test-Path "scripts") {
+        $hits = Get-ChildItem -Path "scripts" -Recurse -Depth 1 -File -Include *.mjs, *.js, *.cjs, *.ts, *.sh, *.ps1 -ErrorAction SilentlyContinue |
+            Where-Object { Select-String -Path $_.FullName -Pattern 'esbuild|rollup|webpack|terser|minif|bundl|require\(|node:|npm |npx ' -Quiet }
+        if ($hits) {
+            Warn "scripts/ holds build scripts that Chroma no longer runs: $(($hits | ForEach-Object { $_.FullName }) -join ' ') — chroma build compiles by itself; remove them from the project."
+        }
+    }
 }
 
 function Invoke-ChromaValidate {
@@ -979,12 +792,21 @@ function Invoke-ChromaValidate {
     }
     Warn-LegacyJsInSrc
     if ($cfg.plugins) {
-        foreach ($pid in $cfg.plugins) {
-            $plugDir = Join-Path "plugins" $pid
+        foreach ($plugId in $cfg.plugins) {
+            $plugDir = Join-Path "plugins" $plugId
             if (-not (Test-Path $plugDir)) {
-                Fail "chroma.json: plugin '$pid' missing at $plugDir"
+                # Global build plugins (chroma-mdx, chroma-blog, chroma-seo, chroma-icons, chroma-style) need no folder.
+                if ($BuildPlugins -contains $plugId) { continue }
+                Fail "chroma.json: plugin '$plugId' missing at $plugDir (global build plugins: $($BuildPlugins -join ', '))"
             }
         }
+    }
+    Warn-NodeLeftovers
+    $schemaDir = Resolve-SchemasDir
+    if ($schemaDir -and (Test-Path $ChromaEngineBin)) {
+        & $ChromaEngineBin validate-schema (Join-Path $schemaDir "chroma/chroma.schema.json") (Resolve-Path "chroma.json").Path
+        if ($LASTEXITCODE -ne 0) { Fail "chroma.json failed JSON Schema validation (see errors above)" }
+        Ok "chroma.json matches chroma.schema.json"
     }
     Ok "Validation passed (structure)"
 }
@@ -1000,8 +822,9 @@ switch ($Command) {
     "new"     { New-ChromaApp -Arguments $Rest }
     "init"    { New-ChromaApp -Arguments $Rest }
     "dev"     { Invoke-ChromaDev -Arguments $Rest }
+    "preview" { Invoke-ChromaPreview -Arguments $Rest }
     "serve"   { Invoke-ChromaServe -Arguments $Rest }
-    "build"   { Invoke-ChromaBuild }
+    "build"   { Invoke-ChromaBuild -Arguments $Rest }
     "validate" { Invoke-ChromaValidate }
     "add"     { Invoke-ChromaAdd -Arguments $Rest }
     "fs"      { Invoke-ChromaFs -Arguments $Rest }

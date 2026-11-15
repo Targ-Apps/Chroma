@@ -1,140 +1,268 @@
 /*
- * Design tokens: TargApps brand palette (hex canonical) + layout scale.
- * `--cs-*` holds brand colors; semantic aliases (`--background`, …) map
- * utilities and component shells without breaking existing class names.
+ * @chroma/style — design tokens (capa `tokens`).
  *
- * Light: `:root` / `[data-theme="light"]`
- * Dark: `[data-theme="dark"]` or `prefers-color-scheme` when no data-theme.
+ * Nombres compatibles con shadcn/ui: --background, --primary, --muted-foreground, --radius…
+ * El tema claro es el de :root; el oscuro se activa con `.dark` o `[data-theme="dark"]` (y, si <html>
+ * no tiene data-theme ni clase `light`, con prefers-color-scheme: dark).
+ *
+ * `--cs-*` es la paleta de marca (brand): los tokens semanticos pueden apuntar a ella. Cambia la marca
+ * redefiniendo `--cs-*`, o cambia solo el significado redefiniendo `--primary`, `--card`…
+ * La paleta (red-500, gray-950…) NO esta aqui: el generador emite solo las variables `--color-*` que el codigo usa.
  */
+@layer tokens {
+  :root,
+  [data-theme="light"],
+  .light {
+    /* Marca */
+    --cs-background: hsl(48, 33.3333%, 97.0588%);
+    --cs-foreground: hsl(48, 19.6078%, 20%);
+    --cs-primary: hsl(15.1111, 55.5556%, 52.3529%);
+    --cs-primary-foreground: hsl(0, 0%, 100%);
+    --cs-secondary: hsl(46.1538, 22.8070%, 88.8235%);
+    --cs-secondary-foreground: hsl(50.7692, 8.4967%, 30%);
+    --cs-muted: hsl(44, 29.4118%, 90%);
+    --cs-muted-foreground: hsl(50, 2.3622%, 50.1961%);
+    --cs-border: hsl(50, 7.5%, 84.3137%);
+    --cs-destructive: hsl(60, 2.5641%, 7.6471%);
+    --cs-destructive-foreground: hsl(0, 0%, 100%);
 
-:root,
-[data-theme="light"] {
-  --cs-background: #FAF9F5;
-  --cs-foreground: #3D3929;
-  --cs-primary: #C96442;
-  --cs-primary-foreground: #FAF9F5;
-  --cs-secondary: #E9E6DC;
-  --cs-secondary-foreground: #3D3929;
-  --cs-muted: #EDE9DE;
-  --cs-muted-foreground: #7A7568;
-  --cs-border: #DAD9D4;
-  --cs-destructive: #141413;
-  --cs-destructive-foreground: #FAF9F5;
-
-  --background: var(--cs-background);
-  --foreground: var(--cs-foreground);
-  --card: var(--cs-background);
-  --card-foreground: var(--cs-foreground);
-  --primary: var(--cs-primary);
-  --primary-foreground: var(--cs-primary-foreground);
-  --secondary: var(--cs-secondary);
-  --secondary-foreground: var(--cs-secondary-foreground);
-  --muted: var(--cs-muted);
-  --muted-foreground: var(--cs-muted-foreground);
-  --accent: var(--cs-secondary);
-  --accent-foreground: var(--cs-secondary-foreground);
-  --destructive: var(--cs-destructive);
-  --destructive-foreground: var(--cs-destructive-foreground);
-  --border: var(--cs-border);
-  --input: var(--cs-border);
-  --ring: var(--cs-primary);
-
-  --radius-none: 0px;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-full: 9999px;
-
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-
-  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
-  --text-xs: 0.75rem;
-  --text-xs-leading: 1rem;
-  --text-sm: 0.875rem;
-  --text-sm-leading: 1.25rem;
-  --text-base: 1rem;
-  --text-base-leading: 1.5rem;
-  --text-lg: 1.125rem;
-  --text-lg-leading: 1.75rem;
-  --text-xl: 1.25rem;
-  --text-xl-leading: 1.75rem;
-  --text-2xl: 1.5rem;
-  --text-2xl-leading: 2rem;
-
-  --animate-duration-fast: 150ms;
-  --animate-duration: 300ms;
-  --animate-duration-slow: 500ms;
-  --animate-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --animate-stagger: 60ms;
-}
-
-[data-theme="dark"] {
-  --cs-background: #262624;
-  --cs-foreground: #C3C0B6;
-  --cs-primary: #D97757;
-  --cs-primary-foreground: #FAF9F5;
-  --cs-secondary: #FAF9F5;
-  --cs-secondary-foreground: #3D3929;
-  --cs-muted: #1B1B19;
-  --cs-muted-foreground: #8A8780;
-  --cs-border: #3E3E38;
-  --cs-destructive: #EF4444;
-  --cs-destructive-foreground: #FAF9F5;
-
-  --background: var(--cs-background);
-  --foreground: var(--cs-foreground);
-  --card: var(--cs-muted);
-  --card-foreground: var(--cs-foreground);
-  --primary: var(--cs-primary);
-  --primary-foreground: var(--cs-primary-foreground);
-  --secondary: var(--cs-secondary);
-  --secondary-foreground: var(--cs-secondary-foreground);
-  --muted: var(--cs-muted);
-  --muted-foreground: var(--cs-muted-foreground);
-  --accent: var(--cs-muted);
-  --accent-foreground: var(--cs-foreground);
-  --destructive: var(--cs-destructive);
-  --destructive-foreground: var(--cs-destructive-foreground);
-  --border: var(--cs-border);
-  --input: var(--cs-border);
-  --ring: var(--cs-primary);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --cs-background: #262624;
-    --cs-foreground: #C3C0B6;
-    --cs-primary: #D97757;
-    --cs-primary-foreground: #FAF9F5;
-    --cs-secondary: #FAF9F5;
-    --cs-secondary-foreground: #3D3929;
-    --cs-muted: #1B1B19;
-    --cs-muted-foreground: #8A8780;
-    --cs-border: #3E3E38;
-    --cs-destructive: #EF4444;
-    --cs-destructive-foreground: #FAF9F5;
-
+    /* Semanticos */
     --background: var(--cs-background);
     --foreground: var(--cs-foreground);
-    --card: var(--cs-muted);
-    --card-foreground: var(--cs-foreground);
+    --card: var(--cs-background);
+    --card-foreground: hsl(60, 2.5641%, 7.6471%);
+    --popover: hsl(0, 0%, 100%);
+    --popover-foreground: hsl(50.7692, 19.4030%, 13.1373%);
     --primary: var(--cs-primary);
     --primary-foreground: var(--cs-primary-foreground);
     --secondary: var(--cs-secondary);
     --secondary-foreground: var(--cs-secondary-foreground);
     --muted: var(--cs-muted);
     --muted-foreground: var(--cs-muted-foreground);
-    --accent: var(--cs-muted);
-    --accent-foreground: var(--cs-foreground);
+    --accent: var(--secondary);
+    --accent-foreground: hsl(50.7692, 19.4030%, 13.1373%);
     --destructive: var(--cs-destructive);
     --destructive-foreground: var(--cs-destructive-foreground);
     --border: var(--cs-border);
-    --input: var(--cs-border);
+    --input: hsl(50.7692, 7.9755%, 68.0392%);
+    --ring: var(--primary);
+    --chart-1: hsl(18.2813, 57.1429%, 43.9216%);
+    --chart-2: hsl(251.4545, 84.6154%, 74.5098%);
+    --chart-3: hsl(46.1538, 28.2609%, 81.9608%);
+    --chart-4: hsl(256.5517, 49.1525%, 88.4314%);
+    --chart-5: hsl(17.7778, 60%, 44.1176%);
+    --sidebar: hsl(51.4286, 25.9259%, 94.7059%);
+    --sidebar-foreground: hsl(60, 2.5210%, 23.3333%);
+    --sidebar-primary: hsl(15.1111, 55.5556%, 52.3529%);
+    --sidebar-primary-foreground: hsl(0, 0%, 98.4314%);
+    --sidebar-accent: hsl(46.1538, 22.8070%, 88.8235%);
+    --sidebar-accent-foreground: hsl(0, 0%, 20.3922%);
+    --sidebar-border: hsl(0, 0%, 92.1569%);
+    --sidebar-ring: hsl(0, 0%, 70.9804%);
+    /* Forma */
+    --radius: 0.5rem;
+    --radius-none: 0px;
+    --radius-xs: calc(var(--radius) * 0.4);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-full: 9999px;
+
+    /* Espaciado: p-4 = calc(var(--spacing) * 4) */
+    --spacing: 0.25rem;
+
+    /* Tipografia */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-heading: var(--font-sans);
+    --default-font-family: var(--font-sans);
+    --default-mono-font-family: var(--font-mono);
+
+    --text-xs: 0.75rem;   --text-xs--line-height: calc(1 / 0.75);
+    --text-sm: 0.875rem;  --text-sm--line-height: calc(1.25 / 0.875);
+    --text-base: 1rem;    --text-base--line-height: calc(1.5 / 1);
+    --text-lg: 1.125rem;  --text-lg--line-height: calc(1.75 / 1.125);
+    --text-xl: 1.25rem;   --text-xl--line-height: calc(1.75 / 1.25);
+    --text-2xl: 1.5rem;   --text-2xl--line-height: calc(2 / 1.5);
+    --text-3xl: 1.875rem; --text-3xl--line-height: calc(2.25 / 1.875);
+    --text-4xl: 2.25rem;  --text-4xl--line-height: calc(2.5 / 2.25);
+    --text-5xl: 3rem;     --text-5xl--line-height: 1;
+    --text-6xl: 3.75rem;  --text-6xl--line-height: 1;
+    --text-7xl: 4.5rem;   --text-7xl--line-height: 1;
+    --text-8xl: 6rem;     --text-8xl--line-height: 1;
+    --text-9xl: 8rem;     --text-9xl--line-height: 1;
+
+    --font-weight-thin: 100;
+    --font-weight-extralight: 200;
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+    --font-weight-black: 900;
+
+    --tracking-tighter: -0.05em;
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.025em;
+    --tracking-wider: 0.05em;
+    --tracking-widest: 0.1em;
+
+    --leading-tight: 1.25;
+    --leading-snug: 1.375;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+    --leading-loose: 2;
+
+    /* Contenedores (max-w-xl…, columns-md) */
+    --container-3xs: 16rem;
+    --container-2xs: 18rem;
+    --container-xs: 20rem;
+    --container-sm: 24rem;
+    --container-md: 28rem;
+    --container-lg: 32rem;
+    --container-xl: 36rem;
+    --container-2xl: 42rem;
+    --container-3xl: 48rem;
+    --container-4xl: 56rem;
+    --container-5xl: 64rem;
+    --container-6xl: 72rem;
+    --container-7xl: 80rem;
+    --container-8xl: 88rem;
+    --container-9xl: 96rem;
+    --container-10xl: 104rem;
+
+    /* Sombras (valores sueltos para tu CSS; las utilidades shadow-* las componen con el color) */
+    --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+    /* Efectos y movimiento */
+    --blur-xs: 4px;
+    --blur-sm: 8px;
+    --blur-md: 12px;
+    --blur-lg: 16px;
+    --blur-xl: 24px;
+    --blur-2xl: 40px;
+    --blur-3xl: 64px;
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --aspect-video: 16 / 9;
+    --default-transition-duration: 150ms;
+    --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* data-animate="fade-up|fade-in|scale-in" (utilities.css) */
+    --animate-duration-fast: 150ms;
+    --animate-duration: 300ms;
+    --animate-duration-slow: 500ms;
+    --animate-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --animate-stagger: 60ms;
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --cs-background: hsl(60, 2.7027%, 14.5098%);
+    --cs-foreground: hsl(46.1538, 9.7744%, 73.9216%);
+    --cs-primary: hsl(14.7692, 63.1068%, 59.6078%);
+    --cs-primary-foreground: hsl(0, 0%, 100%);
+    --cs-secondary: hsl(48, 33.3333%, 97.0588%);
+    --cs-secondary-foreground: hsl(60, 2.1277%, 18.4314%);
+    --cs-muted: hsl(60, 3.8462%, 10.1961%);
+    --cs-muted-foreground: hsl(51.4286, 8.8608%, 69.0196%);
+    --cs-border: hsl(60, 5.0847%, 23.1373%);
+    --cs-destructive: hsl(0, 84.2365%, 60.1961%);
+    --cs-destructive-foreground: hsl(0, 0%, 100%);
+
+    --background: var(--cs-background);
+    --foreground: var(--cs-foreground);
+    --card: var(--cs-background);
+    --card-foreground: hsl(48, 33.3333%, 97.0588%);
+    --popover: hsl(60, 2.1277%, 18.4314%);
+    --popover-foreground: hsl(60, 5.4545%, 89.2157%);
+    --primary: var(--cs-primary);
+    --primary-foreground: var(--cs-primary-foreground);
+    --secondary: var(--cs-secondary);
+    --secondary-foreground: var(--cs-secondary-foreground);
+    --muted: var(--cs-muted);
+    --muted-foreground: var(--cs-muted-foreground);
+    --accent: hsl(48, 10.6383%, 9.2157%);
+    --accent-foreground: hsl(51.4286, 25.9259%, 94.7059%);
+    --destructive: var(--cs-destructive);
+    --destructive-foreground: var(--cs-destructive-foreground);
+    --border: var(--cs-border);
+    --input: hsl(52.5000, 5.1282%, 30.5882%);
     --ring: var(--cs-primary);
+    --chart-1: hsl(18.2813, 57.1429%, 43.9216%);
+    --chart-2: hsl(251.4545, 84.6154%, 74.5098%);
+    --chart-3: hsl(48, 10.6383%, 9.2157%);
+    --chart-4: hsl(248.2759, 25.2174%, 22.5490%);
+    --chart-5: hsl(17.7778, 60%, 44.1176%);
+    --sidebar: hsl(30, 3.3333%, 11.7647%);
+    --sidebar-foreground: hsl(46.1538, 9.7744%, 73.9216%);
+    --sidebar-primary: hsl(0, 0%, 20.3922%);
+    --sidebar-primary-foreground: hsl(0, 0%, 98.4314%);
+    --sidebar-accent: hsl(60, 3.4483%, 5.6863%);
+    --sidebar-accent-foreground: hsl(46.1538, 9.7744%, 73.9216%);
+    --sidebar-border: hsl(0, 0%, 92.1569%);
+    --sidebar-ring: hsl(0, 0%, 70.9804%);  }
+
+  /* Oscuro automatico: solo si <html> no fija un tema (data-theme) ni la clase .light */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]):not(.light) {
+      --cs-background: hsl(60, 2.7027%, 14.5098%);
+      --cs-foreground: hsl(46.1538, 9.7744%, 73.9216%);
+      --cs-primary: hsl(14.7692, 63.1068%, 59.6078%);
+      --cs-primary-foreground: hsl(0, 0%, 100%);
+      --cs-secondary: hsl(48, 33.3333%, 97.0588%);
+      --cs-secondary-foreground: hsl(60, 2.1277%, 18.4314%);
+      --cs-muted: hsl(60, 3.8462%, 10.1961%);
+      --cs-muted-foreground: hsl(51.4286, 8.8608%, 69.0196%);
+      --cs-border: hsl(60, 5.0847%, 23.1373%);
+      --cs-destructive: hsl(0, 84.2365%, 60.1961%);
+      --cs-destructive-foreground: hsl(0, 0%, 100%);
+
+      --background: var(--cs-background);
+      --foreground: var(--cs-foreground);
+      --card: var(--cs-background);
+      --card-foreground: hsl(48, 33.3333%, 97.0588%);
+      --popover: hsl(60, 2.1277%, 18.4314%);
+      --popover-foreground: hsl(60, 5.4545%, 89.2157%);
+      --primary: var(--cs-primary);
+      --primary-foreground: var(--cs-primary-foreground);
+      --secondary: var(--cs-secondary);
+      --secondary-foreground: var(--cs-secondary-foreground);
+      --muted: var(--cs-muted);
+      --muted-foreground: var(--cs-muted-foreground);
+      --accent: hsl(48, 10.6383%, 9.2157%);
+      --accent-foreground: hsl(51.4286, 25.9259%, 94.7059%);
+      --destructive: var(--cs-destructive);
+      --destructive-foreground: var(--cs-destructive-foreground);
+      --border: var(--cs-border);
+      --input: hsl(52.5000, 5.1282%, 30.5882%);
+      --ring: var(--cs-primary);
+      --chart-1: hsl(18.2813, 57.1429%, 43.9216%);
+      --chart-2: hsl(251.4545, 84.6154%, 74.5098%);
+      --chart-3: hsl(48, 10.6383%, 9.2157%);
+      --chart-4: hsl(248.2759, 25.2174%, 22.5490%);
+      --chart-5: hsl(17.7778, 60%, 44.1176%);
+      --sidebar: hsl(30, 3.3333%, 11.7647%);
+      --sidebar-foreground: hsl(46.1538, 9.7744%, 73.9216%);
+      --sidebar-primary: hsl(0, 0%, 20.3922%);
+      --sidebar-primary-foreground: hsl(0, 0%, 98.4314%);
+      --sidebar-accent: hsl(60, 3.4483%, 5.6863%);
+      --sidebar-accent-foreground: hsl(46.1538, 9.7744%, 73.9216%);
+      --sidebar-border: hsl(0, 0%, 92.1569%);
+      --sidebar-ring: hsl(0, 0%, 70.9804%);    }
   }
 }

@@ -15,13 +15,24 @@ cd "$SCRIPT_DIR"
 wasm-pack build --target web --release "$@"
 
 # Auto-init: importing the module loads and instantiates the .wasm by itself.
-# Append before esbuild minify so __wbg_init is renamed consistently.
+# Append before the minify step so __wbg_init is renamed consistently.
 cat >> pkg/chroma.js << 'EOF'
 
 await __wbg_init();
 EOF
 
-npx esbuild pkg/chroma.js --minify --outfile=pkg/chroma.js --allow-overwrite
+# Minify with the engine binary of the Chroma CLI (no Node, no npm): CHROMA_ENGINE_BIN, the release build of
+# Chroma-Server in this workspace, or ~/.chroma/bin/engine (must be a version that has `engine minify`).
+ENGINE_BIN="${CHROMA_ENGINE_BIN:-}"
+if [ -z "$ENGINE_BIN" ] || [ ! -x "$ENGINE_BIN" ]; then
+    for candidate in \
+        "$ROOT_DIR/Chroma-Server/target/release/engine" \
+        "${CHROMA_HOME:-$HOME/.chroma}/bin/engine"; do
+        if [ -x "$candidate" ]; then ENGINE_BIN="$candidate"; break; fi
+    done
+fi
+[ -x "$ENGINE_BIN" ] || { echo "engine binary not found: run 'chroma install' or build Chroma-Server (cargo build --release)" >&2; exit 1; }
+"$ENGINE_BIN" minify pkg/chroma.js --out pkg/chroma.js
 
 mkdir -p "$CHROMA_CLI_PKG"
 if command -v rsync >/dev/null 2>&1; then

@@ -1,0 +1,15 @@
+# Clases del subconjunto de arranque (utilities.css). Regenerar con: cargo run -p chroma-plugins --example style_explain -- starter <carpeta de Chroma-Style> (en Chroma-Compiler)
+bg-background bg-foreground bg-card bg-primary bg-secondary bg-muted bg-accent bg-destructive bg-transparent
+text-foreground text-card-foreground text-primary text-primary-foreground text-secondary-foreground text-muted-foreground
+text-accent-foreground text-destructive text-destructive-foreground text-center text-left text-right
+text-xs text-sm text-base text-lg text-xl text-2xl text-3xl font-sans font-mono font-normal font-medium font-semibold font-bold
+border border-0 border-2 border-b border-t border-input border-border border-destructive border-transparent
+rounded-none rounded-sm rounded-md rounded-lg rounded-xl rounded-2xl rounded-full
+shadow-none shadow-sm shadow-md shadow-lg shadow-xl
+flex inline-flex grid hidden block flex-col flex-row flex-wrap items-center items-start justify-center justify-between gap-1 gap-2 gap-3 gap-4 gap-6 w-full h-full
+p-1 p-2 p-3 p-4 p-6 px-2 px-3 px-4 px-6 py-1 py-2 py-3 py-4 m-0 mx-auto mt-2 mt-4 mb-2 mb-4
+relative absolute fixed sticky inset-0 overflow-hidden truncate cursor-pointer select-none sr-only
+opacity-50 opacity-0 opacity-100 transition-colors transition-all duration-150 duration-300 ease-out
+disabled:opacity-50 disabled:pointer-events-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring
+focus-ring is-disabled cs-card cs-btn cs-btn-primary cs-btn-secondary cs-btn-outline cs-btn-ghost cs-btn-destructive cs-btn-sm cs-btn-md cs-btn-lg
+data-animate

@@ -14,7 +14,7 @@ sh <(curl https://docs.targapps.xyz/sh)
 irm https://docs.targapps.xyz/ps | iex
 ```
 
-Confirm with `chroma --version`. What each command needs (Node.js, `wasm-pack`) and other install options: [Getting started](https://docs.targapps.xyz/docs/chroma/getting-started#prerequisites).
+Confirm with `chroma --version`. What each command needs (nothing beyond the CLI: no Node.js, no npm) and other install options: [Getting started](https://docs.targapps.xyz/docs/chroma/getting-started#prerequisites).
 
 ## Usage
 
@@ -23,7 +23,7 @@ chroma new my-app
 cd my-app
 chroma validate
 chroma dev        # serves the app; reload the page on source changes
-chroma build      # production bundle (esbuild; needs Node.js, and wasm-pack for dynamic apps)
+chroma build      # production bundle (Chroma compiler built into the CLI; no Node.js, no npm)
 ```
 
 ```js

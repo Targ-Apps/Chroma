@@ -246,7 +246,7 @@ usage() {
     _help_cmd 'install [--no-rebase-root]'
     _help_body 'Provision ~/.chroma: engine binary, templates, pkg/, plugins, and chroma on PATH.'
     _help_kv 'When' 'First setup, after pulling a newer Chroma checkout, or to fix a broken install'
-    _help_kv 'Why' 'new, dev, and build all expect $CHROMA_HOME/bin (run from repo: ./cli/chroma.sh install)'
+    _help_kv 'Why' 'new, dev, preview, and build all expect $CHROMA_HOME/bin (run from repo: ./cli/chroma.sh install)'
     _help_kv 'Default' 'Wipes $CHROMA_HOME and reinstalls (clean slate)'
     _help_kv 'Flag' '--no-rebase-root — update in place without deleting $CHROMA_HOME first'
     _help_kv 'Example' 'chroma install --no-rebase-root'
@@ -261,35 +261,34 @@ usage() {
     _help_body 'Serve the project root with the engine dev server (needs chroma.json).'
     _help_kv 'When' 'Day-to-day editing; default port from chroma.json dev.port or 4173'
     _help_kv 'Why' 'Serves sources as native ES modules (.chr as JavaScript); browser dev uses live reload'
+    _help_kv 'Plugins' 'Build plugins listed in chroma.json (chroma-mdx, chroma-blog, ...) compile .mdx on request and regenerate their files on change'
     _help_kv 'Live reload' 'Full page refresh on .chr and related changes; off for Chroma Desktop develop'
     _help_kv '--no-desktop' 'Browser only, even when dev.desktop is true (dynamic/standard default)'
-    _help_kv '--static' 'Serve outDir (default dist/) like chroma serve — run chroma build first'
+    _help_kv '--static' 'Same as chroma preview — run chroma build first'
     _help_kv 'Example' 'chroma dev --port 5173'
 
-    _help_cmd 'serve [--port <n>] [--dir <path>]'
-    _help_body 'Serve compiled outDir over HTTP — production-like static host, no live reload.'
+    _help_cmd 'preview [--port <n>] [--dir <path>]'
+    _help_body 'Serve the build output (outDir) over HTTP like a static host — no hot reload, no injection.'
     _help_kv 'When' 'After chroma build; smoke-test dist/ before upload or handoff'
-    _help_kv 'Why' 'Correct MIME types (.wasm, .chr); no dev-reload script injection'
-    _help_kv 'Example' 'chroma build && chroma serve --dir dist'
+    _help_kv 'Why' 'Correct MIME types (.wasm, .chr, .xml); same files a static host would serve'
+    _help_kv 'Alias' 'serve'
+    _help_kv 'Example' 'chroma build && chroma preview --port 4173'
 
     _help_cmd 'build'
     _help_body 'Compile and package into chroma.json outDir (default dist/; folder wiped each run).'
-    _help_kv 'When' 'Before deploy, chroma serve, zip import into Chroma Desktop, or CI artifacts'
-    _help_kv 'Why' 'static: minify + inline WASM into chroma.js; dynamic: esbuild bundle + optional zip'
+    _help_kv 'When' 'Before deploy, chroma preview, zip import into Chroma Desktop, or CI artifacts'
+    _help_kv 'Why' 'static: minify + inline WASM into chroma.js; dynamic: Chroma compiler bundle + minify + optional zip'
+    _help_kv 'Needs' 'Only the chroma CLI: no Node, no npm, no node_modules'
 
     _help_cmd 'validate [--strict] [--no-schema]'
     _help_body 'Validate chroma.json (and chroma-fs.json when present) before dev or build.'
-    _help_kv 'When' 'Locally or in CI; needs Node for JSON Schema when a catalog is found'
-    _help_kv 'Why' 'Catches schema errors, missing entry/pkg/plugins/jsEntry early'
+    _help_kv 'When' 'Locally or in CI'
+    _help_kv 'Why' 'Catches schema errors, missing entry/pkg/plugins/jsEntry early; warns about node_modules, package.json dependencies and compile scripts/'
     _help_kv 'Catalog' '$CHROMA_SCHEMAS, $CHROMA_HOME/schemas, cli/schemas, or monorepo docs catalog'
 
     _help_cmd 'fs init'
     _help_body 'Create chroma-fs.json (indexeddb for static, filesystem for dynamic).'
     _help_kv 'When' 'Adding Chroma-Fs storage to an app that lacks chroma-fs.json'
-
-    _help_cmd 'fs link'
-    _help_body 'Build Chroma-Fs from the workspace and npm-link @chroma/fs (needs Node).'
-    _help_kv 'When' 'standard template or custom apps using the file explorer package'
 
     _help_cmd 'add <lib-id> [--list] [--force] [--dry-run] [--registry <path>]'
     _help_body 'Vendor a legacy UMD/CDN library from the registry into the current app.'
@@ -309,14 +308,14 @@ usage() {
     _help_kv 'When' 'Simple pages, minimal toolchain, single-file engine output'
 
     _help_cmd 'dynamic'
-    _help_body 'ES modules; build bundles with esbuild; optional engine.rebuildWasm.'
+    _help_body 'ES modules; build bundles with the Chroma compiler; optional engine.rebuildWasm.'
     _help_kv 'When' 'Component-style apps under src/**/*.chr'
 
     _help_cmd 'standard'
-    _help_body 'Dynamic plus Chroma-Fs demo, chroma-fs.json, fs npm scripts; dev.desktop default on.'
+    _help_body 'Dynamic plus Chroma-Fs demo and chroma-fs.json; dev.desktop default on.'
     _help_kv 'When' 'Explore filesystem UI and Desktop develop out of the box'
 
-    _help_body 'All templates vendor pkg/ (chroma.js + chroma_bg.wasm). dev/build use $CHROMA_HOME/bin/engine — nothing server-related is copied into the project.'
+    _help_body 'All templates vendor pkg/ (chroma.js + chroma_bg.wasm). dev/preview/build use $CHROMA_HOME/bin/engine — no package.json, no node_modules, no build scripts in the project.'
 
     _help_section 'ENVIRONMENT'
 
@@ -337,7 +336,7 @@ usage() {
 
     _help_section 'EXIT STATUS'
     _help_body '0 on success.'
-    _help_body '1 on usage errors: missing chroma.json, invalid template, missing engine/node/pkg, name collision, validation failure, etc.'
+    _help_body '1 on usage errors: missing chroma.json, invalid template, missing engine/pkg, name collision, validation failure, etc.'
     printf '\n'
 }
 
@@ -362,129 +361,12 @@ json_array() {
     grep -oE '"'"$key"'" *: *\[[^]]*\]' "$file" 2>/dev/null | grep -oE '"[^"]*"' | tail -n +2 | tr -d '"'
 }
 
-require_node() {
-    command -v node >/dev/null 2>&1 || die "Node.js is required for this step (bundling/minifying). Install it from https://nodejs.org and try again."
-    command -v npx >/dev/null 2>&1 || die "npx not found (ships with npm). Install/update Node.js."
-}
-
-# Chroma app source uses .chr (ESM JavaScript). esbuild has no default loader for it.
-readonly ESBUILD_CHR_LOADER=( --loader:.chr=js )
-
-run_esbuild() {
-    npx --yes esbuild "${ESBUILD_CHR_LOADER[@]}" "$@"
-}
-
 warn_legacy_js_in_src() {
     [ -d src ] || return 0
     local f
     while IFS= read -r -d '' f; do
         warn "Legacy .js under src/: $f — use .chr for Chroma app source (see docs/chroma/chr-format)"
     done < <(find src -name '*.js' -type f -print0 2>/dev/null)
-}
-
-# Generates jsconfig.json if the project doesn't already have one, so
-# VSCode-family editors resolve types from pkg/chroma.d.ts (hover docs,
-# autocomplete) without any manual setup. Never overwrites an existing file.
-ensure_jsconfig() {
-    [ -f "jsconfig.json" ] && return 0
-    info "jsconfig.json not found, generating one for editor IntelliSense..."
-    cat > jsconfig.json <<'EOF'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "allowJs": true,
-    "checkJs": false
-  },
-  "include": ["**/*.js", "**/*.chr"],
-  "exclude": ["node_modules", "dist"]
-}
-EOF
-}
-
-# Minifies HTML (strips comments and whitespace) and, optionally, replaces a
-# literal text reference (used to point <script src> at the bundle output).
-minify_html() {
-    local src="$1" dst="$2" from="${3:-}" to="${4:-}"
-    require_node
-    mkdir -p "$(dirname "$dst")"
-    node -e '
-        const fs = require("fs");
-        const [src, dst, from, to] = process.argv.slice(1);
-        let html = fs.readFileSync(src, "utf8");
-        if (from) html = html.split(from).join(to);
-        html = html.replace(/<!--[\s\S]*?-->/g, "");
-        html = html.replace(/>\s+</g, "><");
-        html = html.replace(/[ \t]+/g, " ");
-        html = html.replace(/\n\s*/g, "");
-        fs.writeFileSync(dst, html.trim());
-    ' "$src" "$dst" "$from" "$to"
-}
-
-# Inlines chroma_bg.wasm as base64 directly into chroma.js (replacing the
-# `new URL('chroma_bg.wasm', import.meta.url)` + fetch path with an embedded
-# byte array) and minifies the result. Used by static builds so the shipped
-# engine is a single JS file — no .wasm request, no separate artifact.
-inline_wasm_js() {
-    local vendor_dir="$1" outdir="$2"
-    require_node
-    mkdir -p "$outdir"
-    local inline_script; inline_script="$(mktemp --suffix=.js)"
-    local inlined; inlined="$(mktemp --suffix=.js)"
-    cat > "$inline_script" << 'NODE_EOF'
-const fs = require("fs");
-const path = require("path");
-const [vendorDir, outFile] = process.argv.slice(2);
-const jsSrc = path.join(vendorDir, "chroma.js");
-const wasmSrc = path.join(vendorDir, "chroma_bg.wasm");
-let js = fs.readFileSync(jsSrc, "utf8");
-const wasmB64 = fs.readFileSync(wasmSrc).toString("base64");
-const marker = "new URL('chroma_bg.wasm', import.meta.url)";
-if (!js.includes(marker)) {
-    throw new Error("chroma.js: wasm URL marker not found, cannot inline wasm");
-}
-const inline = "Uint8Array.from(atob('" + wasmB64 + "'), c => c.charCodeAt(0))";
-js = js.split(marker).join(inline);
-fs.writeFileSync(outFile, js);
-NODE_EOF
-    node "$inline_script" "$vendor_dir" "$inlined"
-    rm -f "$inline_script"
-    npx --yes esbuild "$inlined" --minify --outfile="$outdir/chroma.js"
-    rm -f "$inlined"
-}
-
-# VCS, ignore files, and secrets must never ship in dist/ or release archives.
-readonly -a DIST_ARCHIVE_EXCLUDES=(
-    ".git" ".git/*" "*/.git" "*/.git/*"
-    ".gitignore" "*/.gitignore"
-    ".env" ".env.*" "*/.env" "*/.env.*"
-)
-
-strip_dist_metadata() {
-    local dir="$1"
-    find "$dir" -name '.git' -type d -prune -exec rm -rf {} + 2>/dev/null || true
-    find "$dir" -name '.gitignore' -type f -delete 2>/dev/null || true
-    find "$dir" -name '.env' -o -name '.env.*' -type f -delete 2>/dev/null || true
-}
-
-package_dir() {
-    local dir="$1" out="$2"
-    strip_dist_metadata "$dir"
-    if command -v zip >/dev/null 2>&1; then
-        local -a zip_x=()
-        local pat
-        for pat in "${DIST_ARCHIVE_EXCLUDES[@]}"; do
-            zip_x+=( -x "$pat" )
-        done
-        ( cd "$dir" && zip -qr "../$(basename "$out").zip" . "${zip_x[@]}" )
-        echo "$out.zip"
-    else
-        tar --exclude='.git' --exclude='.gitignore' --exclude='.env' --exclude='.env.*' \
-            -czf "$out.tar.gz" -C "$dir" .
-        echo "$out.tar.gz"
-    fi
 }
 
 resolve_chroma_fs_src() {
@@ -538,19 +420,14 @@ install_plugins() {
     mkdir -p "$CHROMA_PLUGINS"
     local saved="$LOG_CTX"
     local fs_src
-    if fs_src="$(resolve_chroma_fs_src)"; then
+    if fs_src="$(resolve_chroma_fs_src)" && [ -d "$fs_src/dist" ]; then
         LOG_CTX=Fs
-        info "Building Chroma-Fs plugin from $fs_src..."
-        if ( cd "$fs_src" && npm install --silent && npm run build ); then
-            rm -rf "$CHROMA_PLUGINS/chroma-fs"
-            mkdir -p "$CHROMA_PLUGINS/chroma-fs"
-            cp "$fs_src/package.json" "$CHROMA_PLUGINS/chroma-fs/"
-            cp -R "$fs_src/dist/." "$CHROMA_PLUGINS/chroma-fs/"
-            [ -f "$fs_src/chroma.plugin.json" ] && cp "$fs_src/chroma.plugin.json" "$CHROMA_PLUGINS/chroma-fs/"
-            ok "Chroma-Fs plugin ready at $CHROMA_PLUGINS/chroma-fs"
-        else
-            warn "Chroma-Fs build failed — plugin install skipped."
-        fi
+        rm -rf "$CHROMA_PLUGINS/chroma-fs"
+        mkdir -p "$CHROMA_PLUGINS/chroma-fs"
+        cp "$fs_src/package.json" "$CHROMA_PLUGINS/chroma-fs/"
+        cp -R "$fs_src/dist/." "$CHROMA_PLUGINS/chroma-fs/"
+        [ -f "$fs_src/chroma.plugin.json" ] && cp "$fs_src/chroma.plugin.json" "$CHROMA_PLUGINS/chroma-fs/"
+        ok "Chroma-Fs plugin ready at $CHROMA_PLUGINS/chroma-fs"
     elif [ -d "$CLI_DIR/plugins/chroma-fs" ]; then
         LOG_CTX=Fs
         rm -rf "$CHROMA_PLUGINS/chroma-fs"
@@ -558,7 +435,7 @@ install_plugins() {
         ok "Chroma-Fs plugin copied from $CLI_DIR/plugins/chroma-fs"
     else
         LOG_CTX=Fs
-        warn "Chroma-Fs source not found — plugin install skipped."
+        warn "Chroma-Fs build not found — plugin install skipped."
     fi
 
     LOG_CTX=Install
@@ -633,6 +510,17 @@ resolve_desktop_bin() {
     return 1
 }
 
+# Global build plugins that ship inside the engine binary (chroma.json "plugins" may list them).
+readonly BUILD_PLUGINS=(chroma-mdx chroma-blog chroma-seo chroma-icons chroma-style)
+
+is_build_plugin() {
+    local p
+    for p in "${BUILD_PLUGINS[@]}"; do
+        [ "$p" = "$1" ] && return 0
+    done
+    return 1
+}
+
 vendor_plugins() {
     local project="$1"
     local plugins plugin
@@ -640,7 +528,11 @@ vendor_plugins() {
     [ -n "$plugins" ] || return 0
 
     for plugin in $plugins; do
-        [ -d "$CHROMA_PLUGINS/$plugin" ] || die "Plugin '$plugin' not found at $CHROMA_PLUGINS/$plugin. Run 'chroma install'."
+        if [ ! -d "$CHROMA_PLUGINS/$plugin" ]; then
+            # Global build plugins (chroma-mdx, chroma-blog, ...) live inside the engine: nothing to copy.
+            is_build_plugin "$plugin" && continue
+            die "Plugin '$plugin' not found at $CHROMA_PLUGINS/$plugin. Run 'chroma install'."
+        fi
         mkdir -p "$project/plugins"
         cp -R "$CHROMA_PLUGINS/$plugin" "$project/plugins/$plugin"
     done
@@ -670,12 +562,6 @@ cmd_install() {
     if [ "$no_rebase_root" = false ] && [ -d "$CHROMA_HOME" ]; then
         info "Wiping $CHROMA_HOME for a clean reinstall (use --no-rebase-root to update in place)..."
         rm -rf "$CHROMA_HOME"
-    fi
-
-    if command -v node >/dev/null 2>&1; then
-        ok "Node.js detected ($(node --version))"
-    else
-        warn "Node.js not found. Required for 'chroma build' (bundling/minifying via esbuild). Install it from https://nodejs.org."
     fi
 
     rm -rf "$CHROMA_ENGINE_SRC"
@@ -729,11 +615,13 @@ cmd_install() {
     info "Installing the dev-server binary (engine)..."
     [ -f "$CLI_DIR/engine-server/engine" ] || die "Prebuilt binary not found at $CLI_DIR/engine-server/engine."
     mkdir -p "$CHROMA_BIN"
-    cp "$CLI_DIR/engine-server/engine" "$CHROMA_ENGINE_BIN"
-    chmod +x "$CHROMA_ENGINE_BIN"
+    cp "$CLI_DIR/engine-server/engine" "$CHROMA_ENGINE_BIN.new"
+    chmod +x "$CHROMA_ENGINE_BIN.new"
+    mv -f "$CHROMA_ENGINE_BIN.new" "$CHROMA_ENGINE_BIN"
     ok "engine binary ready at $CHROMA_ENGINE_BIN"
 
     info "Copying templates..."
+    rm -rf "$CHROMA_TEMPLATES"
     mkdir -p "$CHROMA_TEMPLATES"
     cp -R "$CLI_DIR/examples/." "$CHROMA_TEMPLATES/"
     ok "Templates ready at $CHROMA_TEMPLATES (static, dynamic, standard)"
@@ -749,6 +637,12 @@ cmd_install() {
         cp "$CLI_DIR/legacy-libs/registry.json" "$CHROMA_HOME/legacy-libs/registry.json"
         [ -f "$CLI_DIR/legacy-libs/registry.schema.json" ] && \
             cp "$CLI_DIR/legacy-libs/registry.schema.json" "$CHROMA_HOME/legacy-libs/registry.schema.json"
+        [ -f "$CLI_DIR/legacy-libs/plugins-registry.json" ] && \
+            cp "$CLI_DIR/legacy-libs/plugins-registry.json" "$CHROMA_HOME/legacy-libs/plugins-registry.json"
+        if [ -d "$CLI_DIR/legacy-libs/vendor" ]; then
+            mkdir -p "$CHROMA_HOME/legacy-libs/vendor"
+            cp -R "$CLI_DIR/legacy-libs/vendor/." "$CHROMA_HOME/legacy-libs/vendor/"
+        fi
         ok "Legacy library registry installed at $CHROMA_HOME/legacy-libs/registry.json"
     fi
 
@@ -824,7 +718,6 @@ cmd_new() {
     mkdir -p "$name/pkg"
     cp -R "$CHROMA_ENGINE_SRC/pkg/." "$name/pkg/"
 
-    replace_json_name "$name/package.json" "$name"
     replace_json_name "$name/chroma.json" "$name"
     vendor_plugins "$name"
 
@@ -871,38 +764,35 @@ append_query_param() {
     fi
 }
 
-# ── serve (production-like static preview) ───────────────────────────────────
+# ── preview / serve (production-like static preview) ─────────────────────────
 # Serves chroma.json outDir with the engine binary: MIME table matches nginx,
 # no hot-reload, no HTML injection — same as deploying dist/ to a static host.
-cmd_serve() {
+# `chroma serve` is the older name of `chroma preview` and stays as an alias.
+cmd_preview() {
     LOG_CTX=Serve
     [ -f "chroma.json" ] || die "chroma.json not found in the current directory. Run this inside an app created with 'chroma new'."
     [ -x "$CHROMA_ENGINE_BIN" ] || die "engine binary not found at $CHROMA_ENGINE_BIN. Run 'chroma install'."
 
-    local port outdir entry
-    port="$(json_field chroma.json port)"; port="${port:-4173}"
-    outdir="$(json_field chroma.json outDir)"; outdir="${outdir:-dist}"
-    entry="$(json_field chroma.json entry)"; entry="${entry:-index.html}"
-
+    local engine_args=()
     while [ $# -gt 0 ]; do
         case "$1" in
-            --port) port="$2"; shift 2 ;;
-            --port=*) port="${1#*=}"; shift ;;
-            --dir) outdir="$2"; shift 2 ;;
-            --dir=*) outdir="${1#*=}"; shift ;;
+            --port) [ $# -ge 2 ] || die "--port needs a value"; engine_args+=(--port "$2"); shift 2 ;;
+            --port=*) engine_args+=(--port "${1#*=}"); shift ;;
+            --dir) [ $# -ge 2 ] || die "--dir needs a value"; engine_args+=(--dir "$2"); shift 2 ;;
+            --dir=*) engine_args+=(--dir "${1#*=}"); shift ;;
             --static) shift ;;
             --no-desktop|--no-hot-reload|--no-reload|--hot-reload|--reload) shift ;;
             *)
-                die "Unknown option for 'chroma serve': $1 (use --port <n> or --dir <path>)"
+                die "Unknown option for 'chroma preview': $1 (use --port <n> or --dir <path>)"
                 ;;
         esac
     done
 
-    [ -d "$outdir" ] || die "Build output not found at $outdir/. Run 'chroma build' first."
-    [ -f "$outdir/$entry" ] || die "$outdir/$entry not found. Run 'chroma build' or check chroma.json entry/outDir."
+    CHROMA_DEV_RELOAD=0 exec "$CHROMA_ENGINE_BIN" preview "${engine_args[@]}"
+}
 
-    info "Serving $outdir/ at http://127.0.0.1:$port/ (production-like — no hot-reload)"
-    CHROMA_DEV_RELOAD=0 exec "$CHROMA_ENGINE_BIN" --port "$port" --dir "$outdir" --no-reload
+cmd_serve() {
+    cmd_preview "$@"
 }
 
 # ── dev ──────────────────────────────────────────────────────────────────────
@@ -925,7 +815,7 @@ cmd_dev() {
                 [ "$x" = "--static" ] && continue
                 filtered+=("$x")
             done
-            cmd_serve "${filtered[@]}"
+            cmd_preview "${filtered[@]}"
             return
         fi
     done
@@ -952,7 +842,7 @@ cmd_dev() {
 
     local reload_arg
     reload_arg="$(engine_dev_args)"
-    exec "$CHROMA_ENGINE_BIN" --port "$port" --dir . "$reload_arg"
+    exec "$CHROMA_ENGINE_BIN" dev --port "$port" --dir . "$reload_arg"
 }
 
 launch_dev_with_desktop() {
@@ -967,7 +857,7 @@ launch_dev_with_desktop() {
 
     info "Starting dev server on port $port (hot-reload disabled for Desktop)..."
     CHROMA_DEV_ENGINE_PID=0
-    CHROMA_DEV_RELOAD=0 "$CHROMA_ENGINE_BIN" --port "$port" --dir . --no-reload &
+    CHROMA_DEV_RELOAD=0 "$CHROMA_ENGINE_BIN" dev --port "$port" --dir . --no-reload &
     CHROMA_DEV_ENGINE_PID=$!
     cleanup_dev() {
         if [ "$CHROMA_DEV_ENGINE_PID" -gt 0 ]; then
@@ -985,117 +875,20 @@ launch_dev_with_desktop() {
 }
 
 # ── build ────────────────────────────────────────────────────────────────────
+# The whole build (bundle, minify, HTML, assets, build plugins, zip) is done by
+# the engine binary: no Node, no npm, no esbuild.
 cmd_build() {
     LOG_CTX=Build
     [ -f "chroma.json" ] || die "chroma.json not found in the current directory."
-    local mode outdir
-    mode="$(json_field chroma.json mode)"
-    outdir="$(json_field chroma.json outDir)"; outdir="${outdir:-dist}"
-
-    ensure_jsconfig
-
-    rm -rf "$outdir"
-    mkdir -p "$outdir"
-
-    case "$mode" in
-        static) build_static "$outdir" ;;
-        dynamic) build_dynamic "$outdir" ;;
-        *) die "Unknown mode in chroma.json: '$mode'" ;;
-    esac
-}
-
-build_static() {
-    local outdir="$1"
-    require_node
-    local entry vendor_dir
-    entry="$(json_field chroma.json entry)"
-    vendor_dir="$(json_field chroma.json vendorDir)"
-
-    info "Building static → $outdir/ (source files minified as written)"
-
-    minify_html "$entry" "$outdir/$entry"
-
-    local f
-    for f in $(json_array chroma.json scripts); do
-        mkdir -p "$outdir/$(dirname "$f")"
-        run_esbuild "$f" --minify --outfile="$outdir/$f"
-    done
-    for f in $(json_array chroma.json styles); do
-        mkdir -p "$outdir/$(dirname "$f")"
-        run_esbuild "$f" --minify --outfile="$outdir/$f"
-    done
-
-    inline_wasm_js "$vendor_dir" "$outdir/$vendor_dir"
-
-    if [ -d "plugins" ]; then
-        mkdir -p "$outdir/plugins"
-        cp -R plugins/. "$outdir/plugins/"
-    fi
-    [ -f "chroma-fs.json" ] && cp "chroma-fs.json" "$outdir/chroma-fs.json"
-    cp "chroma.json" "$outdir/chroma.json"
-    strip_dist_metadata "$outdir"
-
-    ok "Static build ready: $outdir/ (engine wasm inlined into minified chroma.js, no .wasm file, not recompiled)"
-}
-
-build_dynamic() {
-    local outdir="$1"
-    require_node
-    command -v wasm-pack >/dev/null 2>&1 || die "wasm-pack not found. Run 'chroma install'."
-
-    local vendor_dir rebuild js_entry outfile do_zip name entry
-    vendor_dir="$(json_field chroma.json vendorDir)"
-    rebuild="$(json_field chroma.json rebuildWasm)"
-    js_entry="$(json_field chroma.json jsEntry)"
-    outfile="$(json_field chroma.json outfile)"; outfile="${outfile:-bundle.js}"
-    do_zip="$(json_field chroma.json zip)"
-    name="$(json_field chroma.json name)"
-    entry="$(json_field chroma.json entry)"
-
-    if [ "$rebuild" = "true" ]; then
-        [ -d "$CHROMA_ENGINE_SRC" ] || die "Engine source not found at $CHROMA_ENGINE_SRC. Run 'chroma install'."
-        info "Recompiling the engine to WASM ($CHROMA_ENGINE_SRC)..."
-        ( cd "$CHROMA_ENGINE_SRC" && ./build.sh )
-        rm -rf "$vendor_dir"
-        mkdir -p "$vendor_dir"
-        cp -R "$CHROMA_ENGINE_SRC/pkg/." "$vendor_dir/"
-    else
-        warn "engine.rebuildWasm=false: using the engine already compiled at $vendor_dir/"
-    fi
-
-    info "Bundling $js_entry → $outdir/$outfile (esbuild, .chr→js loader, minified)"
-    run_esbuild "$js_entry" --bundle --format=esm --minify --outfile="$outdir/$outfile"
-
-    # wasm-bindgen resolves the .wasm with `new URL(..., import.meta.url)`,
-    # so it must sit next to the packaged bundle.
-    cp "$vendor_dir/chroma_bg.wasm" "$outdir/chroma_bg.wasm"
-
-    minify_html "$entry" "$outdir/$entry" "$js_entry" "$outfile"
-
-    if [ -d "plugins" ]; then
-        mkdir -p "$outdir/plugins"
-        cp -R plugins/. "$outdir/plugins/"
-    fi
-    [ -f "chroma-fs.json" ] && cp "chroma-fs.json" "$outdir/chroma-fs.json"
-    cp "chroma.json" "$outdir/chroma.json"
-    strip_dist_metadata "$outdir"
-
-    ok "Dynamic build ready: $outdir/"
-
-    if [ "$do_zip" = "true" ]; then
-        info "Packaging $outdir/ ..."
-        local pkg_path; pkg_path="$(package_dir "$outdir" "$name")"
-        ok "Package ready: $pkg_path"
-    fi
+    [ -x "$CHROMA_ENGINE_BIN" ] || die "engine binary not found at $CHROMA_ENGINE_BIN. Run 'chroma install'."
+    CHROMA_HOME="$CHROMA_HOME" "$CHROMA_ENGINE_BIN" build "$@"
 }
 
 # ── add (legacy libraries) ───────────────────────────────────────────────────
 cmd_add() {
     LOG_CTX=Add
-    require_node
-    local add_script="$CLI_DIR/lib/chroma-add.mjs"
-    [ -f "$add_script" ] || die "chroma add helper not found at $add_script (reinstall CLI from repo)."
-    CHROMA_HOME="$CHROMA_HOME" node "$add_script" "$@"
+    [ -x "$CHROMA_ENGINE_BIN" ] || die "engine binary not found at $CHROMA_ENGINE_BIN. Run 'chroma install'."
+    CHROMA_HOME="$CHROMA_HOME" exec "$CHROMA_ENGINE_BIN" add "$@"
 }
 
 # ── fs init / link ───────────────────────────────────────────────────────────
@@ -1105,8 +898,8 @@ cmd_fs() {
     shift || true
     case "$sub" in
         init) cmd_fs_init "$@" ;;
-        link) cmd_fs_link "$@" ;;
-        *) die "Usage: chroma fs <init|link>" ;;
+        link) die "'chroma fs link' was removed: Chroma projects have no npm. Use the chroma-fs plugin (plugins/chroma-fs, copied by 'chroma new')." ;;
+        *) die "Usage: chroma fs init" ;;
     esac
 }
 
@@ -1141,35 +934,6 @@ EOF
     fi
 
     ok "Created chroma-fs.json (backend: $([ "$mode" = "dynamic" ] && echo filesystem || echo indexeddb))"
-}
-
-cmd_fs_link() {
-    require_node
-    local fs_src
-    fs_src="$(resolve_chroma_fs_src)" || die "Chroma-Fs source not found. Run from the TargApps workspace."
-
-    info "Building Chroma-Fs..."
-    ( cd "$fs_src" && npm install --silent && npm run build )
-
-    if [ ! -f "package.json" ]; then
-        die "package.json not found in the current directory."
-    fi
-
-    local abs_src
-    abs_src="$(cd "$fs_src" && pwd)"
-
-    node -e '
-        const fs = require("fs");
-        const path = require("path");
-        const pkgPath = "package.json";
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-        pkg.dependencies = pkg.dependencies || {};
-        pkg.dependencies["@chroma/fs"] = "file:" + process.argv[1];
-        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-    ' "$abs_src"
-
-    npm install --silent
-    ok "@chroma/fs linked from $abs_src"
 }
 
 # ── validate ─────────────────────────────────────────────────────────────────
@@ -1247,7 +1011,9 @@ validate_manifest_structural() {
     while read -r pid; do
         [ -z "$pid" ] && continue
         if [ ! -d "plugins/$pid" ]; then
-            err "$file: plugin \"$pid\" missing at plugins/$pid/"
+            # Global build plugins (chroma-mdx, chroma-blog, chroma-seo, chroma-icons, chroma-style) need no folder.
+            is_build_plugin "$pid" && continue
+            err "$file: plugin \"$pid\" missing at plugins/$pid/ (global build plugins: ${BUILD_PLUGINS[*]})"
             fail=1
             continue
         fi
@@ -1267,32 +1033,41 @@ validate_json_schema_file() {
     data_file="$(cd "$(dirname "$data_file")" && pwd)/$(basename "$data_file")"
     [ -f "$schema_path" ] || die "Schema not found: $schema_path"
     [ -f "$data_file" ] || die "Data file not found: $data_file"
-    require_node
-    local work; work="$(mktemp -d)"
-    (
-        cd "$work"
-        npm init -y >/dev/null 2>&1
-        npm install ajv@8 ajv-formats@3 --silent >/dev/null 2>&1
-        node - "$schema_path" "$data_file" <<'NODE'
-const fs = require("fs");
-const Ajv2020 = require("ajv/dist/2020");
-const addFormats = require("ajv-formats");
-const [schemaPath, dataPath] = process.argv.slice(2);
-const ajv = new Ajv2020({ allErrors: true, strict: false });
-addFormats(ajv);
-const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
-const validate = ajv.compile(schema);
-const data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-if (!validate(data)) {
-  for (const e of validate.errors || []) {
-    const where = e.instancePath || "/";
-    process.stderr.write(`${where}: ${e.message}\n`);
-  }
-  process.exit(1);
+    [ -x "$CHROMA_ENGINE_BIN" ] || die "engine binary not found at $CHROMA_ENGINE_BIN. Run 'chroma install'."
+    "$CHROMA_ENGINE_BIN" validate-schema "$schema_path" "$data_file"
 }
-NODE
-    ) || { rm -rf "$work"; return 1; }
-    rm -rf "$work"
+
+# Chroma projects have no Node, no npm and no node_modules: flag leftovers of the old toolchain.
+# Prints one warning per finding and returns the number of findings.
+warn_node_leftovers() {
+    local n=0
+    if [ -d node_modules ]; then
+        warn "node_modules/ found: Chroma projects have no node_modules. Delete it; import with relative paths or URLs (see docs/chroma/reference/chr-format)."
+        n=$((n + 1))
+    fi
+    if [ -f package.json ]; then
+        local flat; flat="$(tr -d '\n\r' < package.json 2>/dev/null)"
+        if printf '%s' "$flat" | grep -Eq '"(dependencies|devDependencies|optionalDependencies|peerDependencies)"[[:space:]]*:[[:space:]]*\{[[:space:]]*"'; then
+            warn "package.json declares dependencies: Chroma has no npm. Delete package.json (chroma dev|preview|build need nothing else)."
+            n=$((n + 1))
+        elif printf '%s' "$flat" | grep -Eq '"scripts"[[:space:]]*:[[:space:]]*\{[^}]*(npm |npx |node |esbuild|vite|webpack|rollup|tsc)'; then
+            warn "package.json scripts call npm/node tools: use chroma dev, chroma preview and chroma build instead."
+            n=$((n + 1))
+        fi
+    fi
+    if [ -d scripts ]; then
+        local f hits=""
+        while IFS= read -r -d '' f; do
+            if grep -Eqi 'esbuild|rollup|webpack|terser|minif|bundl|require\(|node:|npm |npx ' "$f" 2>/dev/null; then
+                hits="$hits $f"
+            fi
+        done < <(find scripts -maxdepth 2 -type f \( -name '*.mjs' -o -name '*.js' -o -name '*.cjs' -o -name '*.ts' -o -name '*.sh' \) -print0 2>/dev/null)
+        if [ -n "$hits" ]; then
+            warn "scripts/ holds build scripts that Chroma no longer runs:$hits — chroma build compiles, bundles and minifies by itself; remove or move them out of the project."
+            n=$((n + 1))
+        fi
+    fi
+    return $n
 }
 
 cmd_validate() {
@@ -1306,7 +1081,7 @@ cmd_validate() {
                 cat <<'EOF'
 Usage: chroma validate [--strict] [--no-schema]
 
-  --strict     Treat warnings (missing plugin manifest, empty static scripts) as errors
+  --strict     Treat warnings (missing plugin manifest, empty static scripts, node_modules/npm leftovers) as errors
   --no-schema  Skip JSON Schema validation; only run structural checks
 EOF
                 return 0
@@ -1329,12 +1104,18 @@ EOF
                 exit 1
             fi
         else
-            warn "JSON Schema catalog not found — running structural checks only. Set CHROMA_SCHEMAS or run from the TargApps monorepo for full validation."
+            warn "JSON Schema catalog not found — running structural checks only. Set CHROMA_SCHEMAS or run 'chroma install' (installs the schemas)."
         fi
     fi
 
     local had_err=0
     validate_manifest_structural chroma.json || had_err=1
+    local leftovers=0
+    warn_node_leftovers || leftovers=$?
+    if [ "$leftovers" -gt 0 ] && [ "$strict" = true ]; then
+        err "--strict: $leftovers leftover(s) of the Node/npm toolchain found"
+        had_err=1
+    fi
 
     if [ -f "chroma-fs.json" ]; then
         if [ -n "$schemas_dir" ] && [ "$schema_off" = false ]; then
@@ -1371,6 +1152,7 @@ case "$_cmd" in
     install) shift; cmd_install "$@" ;;
     new|init) shift; cmd_new "$@" ;;
     dev) shift; cmd_dev "$@" ;;
+    preview) shift; cmd_preview "$@" ;;
     serve) shift; cmd_serve "$@" ;;
     build) shift; cmd_build "$@" ;;
     validate) shift; cmd_validate "$@" ;;

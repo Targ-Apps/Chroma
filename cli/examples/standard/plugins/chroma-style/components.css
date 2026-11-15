@@ -1,0 +1,54 @@
+/*
+ * @chroma/style — componentes ligeros (capa `components`): clases `cs-*` y ayudas de estado.
+ * Los presets de variants.js (button, badge, card, input) usan `focus-ring` e `is-disabled`.
+ * El generador solo incluye cada seccion si la clase se usa (marcador @when <regex>).
+ */
+@layer components {
+
+  /* @when ^focus-ring$ */
+  .focus-ring:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* @when ^is-disabled$ */
+  .is-disabled { opacity: 0.5; pointer-events: none; }
+
+  /* @when ^cs-card$ */
+  .cs-card {
+    background-color: var(--card);
+    color: var(--card-foreground);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border);
+  }
+
+  /* @when ^cs-btn(-[a-z]+)?$ */
+  .cs-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: 500;
+    font-family: var(--font-sans);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .cs-btn-primary { background-color: var(--primary); color: var(--primary-foreground); }
+  .cs-btn-secondary { background-color: var(--secondary); color: var(--secondary-foreground); }
+  .cs-btn-outline { background-color: transparent; color: var(--foreground); border-color: var(--input); }
+  .cs-btn-ghost { background-color: transparent; color: var(--foreground); }
+  .cs-btn-destructive { background-color: var(--destructive); color: var(--destructive-foreground); }
+  .cs-btn-sm { padding: 0.25rem 0.75rem; font-size: var(--text-xs); line-height: var(--text-xs--line-height); }
+  .cs-btn-md { padding: 0.5rem 1rem; }
+  .cs-btn-lg { padding: 0.5rem 1rem; font-size: var(--text-base); line-height: var(--text-base--line-height); }
+
+  /* @when ^data-animate$ */
+  /* Ganchos de entrada: [data-animate="fade-up|fade-in|scale-in"]; Anime.js/GSAP limpian el estilo inline al terminar */
+  [data-animate="fade-up"] { opacity: 0; transform: translateY(12px); }
+  [data-animate="fade-in"] { opacity: 0; }
+  [data-animate="scale-in"] { opacity: 0; transform: scale(0.96); }
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate] { opacity: 1; transform: none; }
+  }
+}

@@ -1,56 +1,46 @@
 /**
- * @chroma/style — design tokens, utility CSS, and cva presets for Chroma.
+ * @chroma/style — tokens de diseno, generador de utilidades, tw() y presets cva para Chroma.
  *
- * Canonical source: Chroma-Style/ (see Chroma/docs/PLUGIN-STANDARD.md).
- * Call `bootstrapStyle({ cva, cx })` once at startup with WASM engine helpers.
+ * Fuente canonica: Chroma-Style/ (ver Chroma/docs/PLUGIN-STANDARD.md).
+ *
+ *   import { cva, cx } from "../pkg/chroma.js";
+ *   import { bootstrapStyle, twMerge } from "../plugins/chroma-style/index.js";
+ *   const { tw, presets } = bootstrapStyle({ cva, cx, styles: false });  // styles:false = el CSS ya lo enlaza el HTML
+ *
+ * CSS: la forma recomendada es generarlo en build con el plugin nativo chroma-style del CLI (solo las utilidades usadas; se activa con pluginOptions.chroma-style en chroma.json).
+ * Sin paso de build, `injectStyles()` enlaza tokens.css + base.css + utilities.css (subconjunto de arranque, ya con sus componentes).
  */
-
 import { createVariants, createPresets } from "./variants.js";
+import { twMerge, tw as twAlias, createTw } from "./tw.js";
 
-const STYLESHEETS = ["tokens.css", "utilities.css"];
+export const VERSION = "0.3.0";
 
-/** Available utility class names (for docs / autocomplete). */
+/** Hojas que enlaza `injectStyles()` (en este orden: define el orden de capas tokens < base < components < utilities). */
+const STYLESHEETS = ["tokens.css", "base.css", "utilities.css"];
+
+/** Resumen de la gramatica de utilidades (documentacion / autocompletado). Ver docs: chroma-style/utilities. */
 export const utilityClasses = {
-    background: [
-        "bg-background", "bg-foreground", "bg-card", "bg-primary", "bg-secondary",
-        "bg-muted", "bg-accent", "bg-destructive", "bg-transparent",
-    ],
-    text: [
-        "text-foreground", "text-card-foreground", "text-primary", "text-primary-foreground",
-        "text-secondary-foreground", "text-muted-foreground", "text-accent-foreground",
-        "text-destructive", "text-destructive-foreground", "text-center",
-        "text-xs", "text-sm", "text-base", "text-lg", "text-xl", "text-2xl",
-        "font-sans", "font-normal", "font-medium", "font-semibold", "font-bold",
-    ],
-    border: [
-        "border", "border-0", "border-2", "border-input", "border-destructive", "border-transparent",
-    ],
-    rounded: [
-        "rounded-none", "rounded-sm", "rounded-md", "rounded-lg", "rounded-xl", "rounded-2xl", "rounded-full",
-    ],
-    shadow: ["shadow-none", "shadow-sm", "shadow-md", "shadow-lg", "shadow-xl"],
-    layout: [
-        "flex", "inline-flex", "flex-col", "items-center", "justify-center", "justify-between",
-        "gap-1", "gap-2", "gap-4", "w-full",
-    ],
-    spacing: [
-        "p-2", "p-4", "px-2", "px-3", "px-4", "py-1", "py-2",
-        "m-0", "mt-2", "mt-4", "mb-2", "mb-4",
-    ],
-    interaction: [
-        "transition-colors", "focus-ring", "is-disabled",
-        "disabled:opacity-50", "disabled:pointer-events-none",
-    ],
-    components: [
-        "cs-card", "cs-btn", "cs-btn-primary", "cs-btn-secondary", "cs-btn-outline",
-        "cs-btn-ghost", "cs-btn-destructive", "cs-btn-sm", "cs-btn-md", "cs-btn-lg",
-    ],
-    animate: ['data-animate="fade-up"', 'data-animate="fade-in"', 'data-animate="scale-in"'],
+    layout: ["flex", "grid", "hidden", "relative", "absolute", "inset-0", "z-10", "overflow-hidden", "container", "aspect-video", "size-4"],
+    flexGrid: ["flex-col", "items-center", "justify-between", "gap-4", "grid-cols-3", "col-span-2", "space-y-2"],
+    spacing: ["p-4", "px-2", "mt-6", "-mx-1", "m-[3px]", "p-(--pad)"],
+    sizing: ["w-full", "h-screen", "max-w-2xl", "min-h-0", "w-1/2", "w-[calc(100%-2rem)]"],
+    typography: ["text-sm", "text-[13vw]", "font-semibold", "tracking-tight", "leading-snug", "uppercase", "truncate", "line-clamp-3", "prose"],
+    color: ["bg-primary", "text-muted-foreground", "border-border", "bg-primary/80", "text-white/65", "ring-ring/50", "bg-[#0088cc]", "from-primary", "to-transparent"],
+    border: ["border", "border-b-2", "rounded-lg", "rounded-full", "divide-y", "ring-2", "outline-none"],
+    effects: ["shadow-md", "opacity-60", "backdrop-blur-md", "mix-blend-overlay", "blur-sm"],
+    transform: ["translate-y-2", "-translate-y-1/2", "scale-105", "rotate-180", "origin-left"],
+    motion: ["transition-colors", "duration-300", "ease-out", "animate-spin", "animate-in", "fade-in", "zoom-in-95", "slide-in-from-top-2", "animate-marquee"],
+    variants: ["hover:", "focus-visible:", "disabled:", "md:", "max-md:", "dark:", "group-hover:", "peer-checked:", "data-[state=open]:", "aria-expanded:", "has-[...]:", "before:", "[&_svg]:"],
+    components: ["cs-card", "cs-btn", "cs-btn-primary", "cs-btn-outline", "focus-ring", "is-disabled"],
     presets: ["button", "badge", "card", "input"],
 };
 
-/** Injects tokens.css + utilities.css into document.head (idempotent). */
-export function injectStyles() {
+/**
+ * Enlaza las hojas del plugin en document.head (idempotente). Solo para apps sin paso de build.
+ * `base` = URL de la carpeta del plugin (p. ej. "/plugins/chroma-style/"); por defecto, junto a este modulo.
+ * Con un bundle (chroma build) `import.meta.url` apunta al bundle: pasa `base` explicitamente.
+ */
+export function injectStyles({ base } = {}) {
     if (typeof document === "undefined") return;
 
     for (const href of STYLESHEETS) {
@@ -59,38 +49,32 @@ export function injectStyles() {
 
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = new URL(`./${href}`, import.meta.url).href;
+        link.href = base ? `${base.replace(/\/?$/, "/")}${href}` : new URL(`./${href}`, import.meta.url).href;
         link.dataset.chromaPlugin = marker;
         document.head.appendChild(link);
     }
 }
 
-/**
- * Class-name merger — pass the engine's `cx` for full parity, or use standalone.
- * @param {(...parts: any[]) => string} [cxFn]
- */
-export function createTw(cxFn) {
-    const merge = cxFn ?? ((...parts) => parts.flat(Infinity).filter(Boolean).join(" "));
-    return (...parts) => merge(...parts);
-}
-
-export { createVariants, createPresets };
+export { createVariants, createPresets, twMerge, createTw };
+export const tw = twAlias;
 
 /**
- * Bootstrap: inject CSS. Pass engine `cva`/`cx` to get presets and tw helper.
- * @param {{ cva?: Function, cx?: Function }} [engine]
+ * Arranque. Pasa `cva`/`cx` del motor para obtener los presets y un `tw` que primero une con `cx`.
+ * `styles: false` evita enlazar CSS (usa esto cuando el HTML ya enlaza el CSS generado por el plugin chroma-style);
+ * `base` = URL de la carpeta del plugin para `injectStyles`.
+ * @param {{ cva?: Function, cx?: Function, styles?: boolean, base?: string }} [engine]
  */
 export function bootstrapStyle(engine = {}) {
-    injectStyles();
-    const tw = createTw(engine.cx);
+    if (engine.styles !== false) injectStyles({ base: engine.base });
+    const merge = createTw(engine.cx);
     const presets = engine.cva ? createVariants(engine.cva) : null;
-    return { tw, presets, utilityClasses, injectStyles, createVariants };
+    return { tw: merge, twMerge, presets, utilityClasses, injectStyles, createVariants, version: VERSION };
 }
 
-/** Chroma plugin contract — see chroma.plugin.json */
+/** Contrato de plugin Chroma — ver chroma.plugin.json */
 export const plugin = {
     name: "chroma-style",
-    capabilities: ["styling", "design-tokens"],
+    capabilities: ["styling", "design-tokens", "utility-generator"],
     hooks: {
         bootstrap: bootstrapStyle,
         styles: injectStyles,

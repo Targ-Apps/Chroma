@@ -1,4 +1,4 @@
-import { createChromaFs } from "@chroma/fs";
+import { createChromaFs } from "../plugins/chroma-fs/index.js";
 
 let fsPromise = null;
 

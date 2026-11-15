@@ -1,0 +1,73 @@
+/*
+ * @chroma/style — animaciones (@keyframes).
+ * El generador solo incluye los keyframes que alguna clase referencia (animate-spin, animate-marquee, animate-in…).
+ *
+ * Entrada/salida (clases de entrada/salida tipo shadcn): animate-in / animate-out arrancan @keyframes enter / exit,
+ * que leen estas variables; se ajustan con utilidades:
+ *   fade-in  fade-in-50  zoom-in  zoom-in-95  blur-in  spin-in  slide-in-from-top|bottom|left|right[-N]
+ *   fade-out zoom-out … slide-out-to-*      duration-300  ease-out  (la duracion/curva las lee la animacion)
+ *   Ej.: class="animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
+ */
+
+@keyframes enter {
+  from {
+    opacity: var(--cs-enter-opacity, 1);
+    transform: translate3d(var(--cs-enter-translate-x, 0), var(--cs-enter-translate-y, 0), 0)
+      scale3d(var(--cs-enter-scale, 1), var(--cs-enter-scale, 1), var(--cs-enter-scale, 1)) rotate(var(--cs-enter-rotate, 0));
+    filter: blur(var(--cs-enter-blur, 0));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--cs-exit-opacity, 1);
+    transform: translate3d(var(--cs-exit-translate-x, 0), var(--cs-exit-translate-y, 0), 0)
+      scale3d(var(--cs-exit-scale, 1), var(--cs-exit-scale, 1), var(--cs-exit-scale, 1)) rotate(var(--cs-exit-rotate, 0));
+    filter: blur(var(--cs-exit-blur, 0));
+  }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+@keyframes pulse { 50% { opacity: 0.5; } }
+@keyframes bounce {
+  0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: none; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+/* Marquee: --duration (tiempo del ciclo) y --gap (separacion entre copias) los define el elemento */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% - var(--gap))); }
+}
+@keyframes marquee-vertical {
+  from { transform: translateY(0); }
+  to { transform: translateY(calc(-100% - var(--gap))); }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes caret-blink {
+  0%, 70%, 100% { opacity: 1; }
+  20%, 50% { opacity: 0; }
+}
+
+/* Acordeon / colapsable (altura medida por el componente: --accordion-panel-height | Radix | Base UI) */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto)); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto)); }
+  to { height: 0; }
+}
+@keyframes collapsible-down {
+  from { height: 0; }
+  to { height: var(--radix-collapsible-content-height, var(--collapsible-panel-height, auto)); }
+}
+@keyframes collapsible-up {
+  from { height: var(--radix-collapsible-content-height, var(--collapsible-panel-height, auto)); }
+  to { height: 0; }
+}

@@ -8,5 +8,5 @@
     "checkJs": false
   },
   "include": ["**/*.js", "**/*.chr"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["dist"]
 }

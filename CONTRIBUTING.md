@@ -2,7 +2,7 @@
 
 ## Build the engine from source
 
-Requires Rust, the `wasm32-unknown-unknown` target, `wasm-pack` and Node.js (for the esbuild minify step).
+Requires Rust, the `wasm32-unknown-unknown` target, `wasm-pack`, and the `engine` binary of Chroma-Server (`cargo build --release` in `Chroma-Server/`), which minifies `pkg/chroma.js`. No Node.js.
 
 ```bash
 ./build.sh      # wasm-pack build --target web --release, then minifies pkg/chroma.js

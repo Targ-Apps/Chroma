@@ -1,15 +1,27 @@
 {
   "name": "chroma-style",
   "package": "@chroma/style",
-  "version": "0.1.2",
-  "description": "Design tokens, utility CSS, and cva presets for Chroma apps.",
+  "version": "0.3.0",
+  "description": "Design tokens, tw() class merge, prose and cva presets for Chroma apps. Its CSS generator ships with the Chroma CLI as the build plugin chroma-style.",
   "entry": "index.js",
   "loadAs": "style",
-  "capabilities": ["styling", "design-tokens"],
+  "capabilities": [
+    "styling",
+    "design-tokens",
+    "utility-generator"
+  ],
   "hooks": {
     "styles": "injectStyles"
   },
   "assets": {
-    "stylesheets": ["tokens.css", "utilities.css"]
+    "stylesheets": [
+      "tokens.css",
+      "base.css",
+      "utilities.css"
+    ],
+    "generated": [
+      "prose.css",
+      "animate.css"
+    ]
   }
 }

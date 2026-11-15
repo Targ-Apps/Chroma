@@ -1,16 +1,26 @@
 {
   "name": "@chroma/style",
-  "version": "0.1.2",
-  "description": "Design tokens and utility classes (colors, borders, rounded, shadows, text) with cva/cx integration for Chroma.",
+  "version": "0.3.0",
+  "description": "Design tokens, tw() class merge, prose and cva/cx presets for Chroma. The utility-CSS generator is the native chroma-style build plugin of the Chroma CLI.",
   "type": "module",
   "license": "GPL-3.0-or-later",
   "main": "./index.js",
   "module": "./index.js",
   "exports": {
     ".": "./index.js",
+    "./tw": "./tw.js",
     "./tokens.css": "./tokens.css",
+    "./base.css": "./base.css",
+    "./components.css": "./components.css",
     "./utilities.css": "./utilities.css",
+    "./prose.css": "./prose.css",
+    "./animate.css": "./animate.css",
     "./variants.js": "./variants.js"
   },
-  "sideEffects": ["./tokens.css", "./utilities.css"]
+  "sideEffects": [
+    "./tokens.css",
+    "./base.css",
+    "./components.css",
+    "./utilities.css"
+  ]
 }
