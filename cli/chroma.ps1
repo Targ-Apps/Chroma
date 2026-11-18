@@ -134,6 +134,13 @@ function Show-Usage {
     Write-HelpKv 'When' 'Starting a project; templates set mode, plugins, and desktop dev defaults'
     Write-HelpKv 'Example' 'chroma new my-app --template dynamic'
 
+    Write-HelpCmd 'recreate [path] [--template static|dynamic|standard] [--dry-run]'
+    Write-HelpBody 'Restore the Chroma files a project is missing: pkg/, chroma.json, jsconfig.json, chroma-fs.json and listed runtime plugins.'
+    Write-HelpKv 'When' 'A project has no pkg/ or chroma.json (fresh clone, deploy target, copied sources)'
+    Write-HelpKv 'Why' 'Copies only what is absent from the installed templates; never overwrites or deletes anything'
+    Write-HelpKv 'Flag' '--dry-run - list what would be created without writing'
+    Write-HelpKv 'Example' 'chroma recreate ..\my-site --dry-run'
+
     Write-HelpCmd 'dev [--port <n>] [--no-desktop] [--static] [--no-reload | --reload]'
     Write-HelpBody 'Serve the project root with the engine dev server (needs chroma.json).'
     Write-HelpKv 'When' 'Day-to-day editing; default port from chroma.json or 4173'
@@ -811,6 +818,136 @@ function Invoke-ChromaValidate {
     Ok "Validation passed (structure)"
 }
 
+# ── recreate ─────────────────────────────────────────────────────────────────
+# Restores the Chroma files a project is missing (pkg/, chroma.json, jsconfig.json, chroma-fs.json and the runtime
+# plugins listed in chroma.json) from the installed templates. It ONLY adds what is absent: it never overwrites an
+# existing file and never deletes anything, so project source is left exactly as it is.
+function Copy-MissingFile {
+    param([string]$Source, [string]$Dest, [string]$Root, [ref]$Counts, [bool]$DryRun)
+    if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) { return }
+    $shown = $Dest.Substring($Root.Length).TrimStart('\', '/').Replace('\', '/')
+    if (Test-Path -LiteralPath $Dest) { $Counts.Value.Skipped++; return }
+    $Counts.Value.Created++
+    if ($DryRun) { Write-Host "  would create $shown"; return }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Dest) | Out-Null
+    Copy-Item -LiteralPath $Source -Destination $Dest
+    Write-Host "  + $shown"
+}
+
+function Copy-MissingTree {
+    param([string]$SourceDir, [string]$DestDir, [string]$Root, [ref]$Counts, [bool]$DryRun)
+    if (-not (Test-Path -LiteralPath $SourceDir -PathType Container)) { return }
+    $base = (Resolve-Path -LiteralPath $SourceDir).Path
+    Get-ChildItem -LiteralPath $base -Recurse -Force -File | Sort-Object FullName | ForEach-Object {
+        $rel = $_.FullName.Substring($base.Length).TrimStart('\', '/')
+        Copy-MissingFile -Source $_.FullName -Dest (Join-Path $DestDir $rel) -Root $Root -Counts $Counts -DryRun $DryRun
+    }
+}
+
+function Invoke-ChromaRecreate {
+    param([string[]]$Arguments)
+
+    $target = "."
+    $template = ""
+    $dryRun = $false
+    for ($i = 0; $i -lt $Arguments.Count; $i++) {
+        $a = $Arguments[$i]
+        if ($a -eq "--template") { $template = $Arguments[$i + 1]; $i++ }
+        elseif ($a -match '^--template=(.*)$') { $template = $Matches[1] }
+        elseif ($a -eq "--dry-run" -or $a -eq "-n") { $dryRun = $true }
+        elseif ($a.StartsWith("-")) { Fail "Unknown option: $a" }
+        else { $target = $a }
+    }
+
+    if (-not (Test-Path -LiteralPath $target -PathType Container)) {
+        Fail "Usage: chroma recreate [path] [--template static|dynamic|standard] [--dry-run] - '$target' is not a directory."
+    }
+    $root = (Resolve-Path -LiteralPath $target).Path.TrimEnd('\', '/')
+    if (-not (Test-Path $ChromaTemplates)) { Fail "Chroma environment not found at $ChromaHome. Run 'chroma install' first (from the repo)." }
+    $enginePkg = Join-Path $ChromaEngineSrc "pkg"
+    if (-not (Test-Path $enginePkg)) { Fail "Compiled engine not found at $enginePkg. Run 'chroma install' first." }
+
+    $manifestPath = Join-Path $root "chroma.json"
+    $hadManifest = Test-Path -LiteralPath $manifestPath
+    $cfg = $null
+    if ($hadManifest) { $cfg = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json }
+
+    # Template: --template wins, then the project's own "mode", then a guess from its sources.
+    if (-not $template -and $cfg -and $cfg.mode) { $template = [string]$cfg.mode }
+    if (-not $template) {
+        $srcDir = Join-Path $root "src"
+        $hasChr = (Test-Path $srcDir) -and (Get-ChildItem -LiteralPath $srcDir -Recurse -Filter *.chr -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+        $template = if ($hasChr) { "dynamic" } else { "static" }
+    }
+    if ($template -ne "static" -and $template -ne "dynamic" -and $template -ne "standard") {
+        Fail "Invalid template: '$template' (use 'static', 'dynamic', or 'standard')"
+    }
+    $tdir = Join-Path $ChromaTemplates $template
+    if (-not (Test-Path $tdir)) { Fail "Template '$template' not found at $tdir. Run 'chroma install' first." }
+
+    if ($dryRun) { Info "Dry run: nothing is written. Checking $root (template: $template)..." }
+    else { Info "Restoring missing Chroma files in $root (template: $template). Existing files are never touched." }
+
+    $counts = [pscustomobject]@{ Created = 0; Skipped = 0 }
+
+    # 1. chroma.json (from the template, named after the folder).
+    if (-not $hadManifest) {
+        Copy-MissingFile -Source (Join-Path $tdir "chroma.json") -Dest $manifestPath -Root $root -Counts ([ref]$counts) -DryRun $dryRun
+        if (-not $dryRun -and (Test-Path -LiteralPath $manifestPath)) { Set-JsonName $manifestPath (Split-Path -Leaf $root) }
+    }
+    $sourceManifest = if (Test-Path -LiteralPath $manifestPath) { $manifestPath } else { Join-Path $tdir "chroma.json" }
+    $srcCfg = Get-Content -Raw -LiteralPath $sourceManifest | ConvertFrom-Json
+
+    # 2. pkg/ (engine glue + WASM), at engine.vendorDir.
+    $vendor = "pkg"
+    if ($srcCfg.engine -and $srcCfg.engine.vendorDir) { $vendor = [string]$srcCfg.engine.vendorDir }
+    if ($vendor.StartsWith("/") -or $vendor.StartsWith("\") -or $vendor.Contains("..") -or [System.IO.Path]::IsPathRooted($vendor)) {
+        Fail "engine.vendorDir '$vendor' must be a relative path inside the project."
+    }
+    Copy-MissingTree -SourceDir $enginePkg -DestDir (Join-Path $root $vendor) -Root $root -Counts ([ref]$counts) -DryRun $dryRun
+    $havePkg = Join-Path (Join-Path $root $vendor) "package.json"
+    $wantPkg = Join-Path $enginePkg "package.json"
+    if ((Test-Path -LiteralPath $havePkg) -and (Test-Path -LiteralPath $wantPkg)) {
+        $have = (Get-Content -Raw -LiteralPath $havePkg | ConvertFrom-Json).version
+        $want = (Get-Content -Raw -LiteralPath $wantPkg | ConvertFrom-Json).version
+        if ($have -and $want -and $have -ne $want) {
+            Warn "$vendor/ is engine $have; the installed engine is $want. recreate never replaces existing files: copy $enginePkg over it yourself if you want to update."
+        }
+    }
+
+    # 3. Editor config and the Chroma-Fs config, only when the project uses them.
+    Copy-MissingFile -Source (Join-Path $tdir "jsconfig.json") -Dest (Join-Path $root "jsconfig.json") -Root $root -Counts ([ref]$counts) -DryRun $dryRun
+    $plugins = @()
+    if ($srcCfg.plugins) { $plugins = @($srcCfg.plugins) }
+    if ($plugins -contains "chroma-fs") {
+        Copy-MissingFile -Source (Join-Path $tdir "chroma-fs.json") -Dest (Join-Path $root "chroma-fs.json") -Root $root -Counts ([ref]$counts) -DryRun $dryRun
+    }
+
+    # 4. Runtime plugins listed in chroma.json (build plugins live inside the engine and need no files).
+    $hasRuntime = $false
+    foreach ($plugin in $plugins) {
+        $src = Join-Path $ChromaPlugins $plugin
+        if (Test-Path $src) {
+            if ($BuildPlugins -notcontains $plugin) { $hasRuntime = $true }
+            Copy-MissingTree -SourceDir $src -DestDir (Join-Path (Join-Path $root "plugins") $plugin) -Root $root -Counts ([ref]$counts) -DryRun $dryRun
+        } elseif ($BuildPlugins -notcontains $plugin) {
+            Warn "Plugin '$plugin' is listed in chroma.json but not installed at $src; skipped."
+        }
+    }
+    if ($hasRuntime) {
+        Copy-MissingFile -Source (Join-Path (Join-Path $tdir "plugins") "loader.js") -Dest (Join-Path (Join-Path $root "plugins") "loader.js") -Root $root -Counts ([ref]$counts) -DryRun $dryRun
+    }
+
+    if ($counts.Created -eq 0) {
+        Ok "Nothing to restore: all Chroma files are already there ($($counts.Skipped) checked, none changed)."
+    } elseif ($dryRun) {
+        Ok "Dry run: $($counts.Created) file(s) would be created, $($counts.Skipped) existing file(s) left alone."
+    } else {
+        Ok "Restored $($counts.Created) file(s); $($counts.Skipped) existing file(s) left untouched."
+        Write-Host "  cd $target; chroma validate"
+    }
+}
+
 # ── dispatch ─────────────────────────────────────────────────────────────────
 switch ($Command) {
     { $_ -in @("help", "--help", "-h", "--version", "-v") } { }
@@ -821,6 +958,7 @@ switch ($Command) {
     "install" { Install-Chroma -Arguments $Rest }
     "new"     { New-ChromaApp -Arguments $Rest }
     "init"    { New-ChromaApp -Arguments $Rest }
+    "recreate" { Invoke-ChromaRecreate -Arguments $Rest }
     "dev"     { Invoke-ChromaDev -Arguments $Rest }
     "preview" { Invoke-ChromaPreview -Arguments $Rest }
     "serve"   { Invoke-ChromaServe -Arguments $Rest }

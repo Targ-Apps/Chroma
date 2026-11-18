@@ -2,6 +2,10 @@
 
 All notable changes to the Chroma engine and CLI are documented here.
 
+## 0.5.0
+
+- New: `chroma recreate [path] [--template static|dynamic|standard] [--dry-run]` restores the Chroma files a project is missing (`pkg/`, `chroma.json`, `jsconfig.json`, `chroma-fs.json` and the runtime plugins listed in `chroma.json`) from the installed templates and engine. It only adds what is absent: it never overwrites or deletes anything, so project sources are untouched. Meant for fresh clones, deploy targets, and copied sources without `pkg/` or `chroma.json`.
+
 ## 0.4.0
 
 Chroma no longer needs Node.js, npm, esbuild, or `node_modules` in any project. `chroma dev`, `chroma preview`, `chroma build`, and `chroma add` depend only on the CLI and its `engine` binary (Chroma-Server 0.2.0), which now contains Chroma's own compiler built on Oxc (`chroma-compiler`) and the global build plugins (`chroma-plugins`).

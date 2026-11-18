@@ -257,6 +257,13 @@ usage() {
     _help_kv 'Why' 'Copies pkg/, rewrites name fields, vendors template plugins'
     _help_kv 'Example' 'chroma new my-app --template dynamic'
 
+    _help_cmd 'recreate [path] [--template static|dynamic|standard] [--dry-run]'
+    _help_body 'Restore the Chroma files a project is missing: pkg/, chroma.json, jsconfig.json, chroma-fs.json and listed runtime plugins.'
+    _help_kv 'When' 'A project has no pkg/ or chroma.json (fresh clone, deploy target, copied sources)'
+    _help_kv 'Why' 'Copies only what is absent from the installed templates; never overwrites or deletes anything'
+    _help_kv 'Flag' '--dry-run — list what would be created without writing'
+    _help_kv 'Example' 'chroma recreate ../my-site --dry-run'
+
     _help_cmd 'dev [--port <n>] [--no-desktop] [--static] [--no-reload | --reload]'
     _help_body 'Serve the project root with the engine dev server (needs chroma.json).'
     _help_kv 'When' 'Day-to-day editing; default port from chroma.json dev.port or 4173'
@@ -732,6 +739,163 @@ replace_json_name() {
     sed -E 's/^( *"name": *)"[^"]*"/\1"'"$name"'"/' "$file" > "$tmp" && mv "$tmp" "$file"
 }
 
+# ── recreate ─────────────────────────────────────────────────────────────────
+# Restores the Chroma files a project is missing (pkg/, chroma.json, jsconfig.json, chroma-fs.json and the runtime
+# plugins listed in chroma.json) from the installed templates. It ONLY adds what is absent: it never overwrites an
+# existing file and never deletes anything, so project source (src/, index.html, assets, ...) is left exactly as it is.
+RECREATE_CREATED=0
+RECREATE_SKIPPED=0
+RECREATE_DRY=false
+RECREATE_ROOT=""
+
+# recreate_copy_missing <src_dir> <dest_dir>  — copy every file of src_dir that does not exist yet in dest_dir.
+recreate_copy_missing() {
+    local src="$1" dest="$2" f rel shown
+    [ -d "$src" ] || return 0
+    while IFS= read -r -d '' f; do
+        rel="${f#"$src"/}"
+        shown="${dest#"$RECREATE_ROOT"/}"
+        [ "$dest" = "$RECREATE_ROOT" ] && shown=""
+        shown="${shown:+$shown/}$rel"
+        if [ -e "$dest/$rel" ] || [ -L "$dest/$rel" ]; then
+            RECREATE_SKIPPED=$((RECREATE_SKIPPED + 1))
+            continue
+        fi
+        RECREATE_CREATED=$((RECREATE_CREATED + 1))
+        if [ "$RECREATE_DRY" = true ]; then
+            echo "  would create $shown"
+            continue
+        fi
+        mkdir -p "$(dirname "$dest/$rel")"
+        cp -p "$f" "$dest/$rel"
+        echo "  + $shown"
+    done < <(find "$src" -type f -print0 | sort -z)
+}
+
+# recreate_copy_file <src_file> <dest_file> — same, for a single file.
+recreate_copy_file() {
+    local src="$1" dest="$2" shown
+    [ -f "$src" ] || return 0
+    shown="${dest#"$RECREATE_ROOT"/}"
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        RECREATE_SKIPPED=$((RECREATE_SKIPPED + 1))
+        return 0
+    fi
+    RECREATE_CREATED=$((RECREATE_CREATED + 1))
+    if [ "$RECREATE_DRY" = true ]; then
+        echo "  would create $shown"
+        return 0
+    fi
+    mkdir -p "$(dirname "$dest")"
+    cp -p "$src" "$dest"
+    echo "  + $shown"
+}
+
+# Which template a project without chroma.json looks like: dynamic when it has .chr sources, otherwise static.
+recreate_guess_template() {
+    local root="$1"
+    if [ -d "$root/src" ] && [ -n "$(find "$root/src" -name '*.chr' -type f -print -quit 2>/dev/null)" ]; then
+        echo dynamic
+    else
+        echo static
+    fi
+}
+
+cmd_recreate() {
+    LOG_CTX=Recreate
+    local target="." template="" arg
+    RECREATE_CREATED=0; RECREATE_SKIPPED=0; RECREATE_DRY=false
+    while [ $# -gt 0 ]; do
+        arg="$1"
+        case "$arg" in
+            --template) template="${2:-}"; shift 2 ;;
+            --template=*) template="${arg#*=}"; shift ;;
+            --dry-run|-n) RECREATE_DRY=true; shift ;;
+            -*) die "Unknown option: $arg" ;;
+            *) target="$arg"; shift ;;
+        esac
+    done
+
+    [ -d "$target" ] || die "Usage: chroma recreate [path] [--template static|dynamic|standard] [--dry-run] — '$target' is not a directory."
+    RECREATE_ROOT="$(cd "$target" && pwd)"
+    [ -d "$CHROMA_TEMPLATES" ] || die "Chroma environment not found at $CHROMA_HOME. Run 'chroma install' first (from the repo)."
+    [ -d "$CHROMA_ENGINE_SRC/pkg" ] || die "Compiled engine not found at $CHROMA_ENGINE_SRC/pkg. Run 'chroma install' first."
+
+    local manifest="$RECREATE_ROOT/chroma.json" had_manifest=true
+    [ -f "$manifest" ] || had_manifest=false
+
+    # Template: --template wins, then the project's own "mode", then a guess from its sources.
+    if [ -z "$template" ]; then
+        if [ "$had_manifest" = true ]; then template="$(json_field "$manifest" mode)"; fi
+        [ -n "$template" ] || template="$(recreate_guess_template "$RECREATE_ROOT")"
+    fi
+    case "$template" in static|dynamic|standard) ;; *) die "Invalid template: '$template' (use 'static', 'dynamic', or 'standard')" ;; esac
+    local tdir="$CHROMA_TEMPLATES/$template"
+    [ -d "$tdir" ] || die "Template '$template' not found at $tdir. Run 'chroma install' first."
+
+    if [ "$RECREATE_DRY" = true ]; then
+        info "Dry run: nothing is written. Checking $RECREATE_ROOT (template: $template)..."
+    else
+        info "Restoring missing Chroma files in $RECREATE_ROOT (template: $template). Existing files are never touched."
+    fi
+
+    # 1. chroma.json (from the template, named after the folder).
+    if [ "$had_manifest" = false ]; then
+        recreate_copy_file "$tdir/chroma.json" "$manifest"
+        if [ "$RECREATE_DRY" = false ] && [ -f "$manifest" ]; then
+            replace_json_name "$manifest" "$(basename "$RECREATE_ROOT")"
+        fi
+    fi
+    # The manifest that decides vendorDir and plugins: the project's, or the template's when it has none (dry run).
+    local source_manifest="$manifest"
+    [ -f "$source_manifest" ] || source_manifest="$tdir/chroma.json"
+
+    # 2. pkg/ (engine glue + WASM), at engine.vendorDir.
+    local vendor
+    vendor="$(json_field "$source_manifest" vendorDir)"; vendor="${vendor:-pkg}"
+    case "$vendor" in /*|*..*) die "engine.vendorDir '$vendor' must be a relative path inside the project." ;; esac
+    recreate_copy_missing "$CHROMA_ENGINE_SRC/pkg" "$RECREATE_ROOT/$vendor"
+    if [ -f "$RECREATE_ROOT/$vendor/package.json" ] && [ -f "$CHROMA_ENGINE_SRC/pkg/package.json" ]; then
+        local have want
+        have="$(json_field "$RECREATE_ROOT/$vendor/package.json" version)"
+        want="$(json_field "$CHROMA_ENGINE_SRC/pkg/package.json" version)"
+        if [ -n "$have" ] && [ -n "$want" ] && [ "$have" != "$want" ]; then
+            warn "$vendor/ is engine $have; the installed engine is $want. recreate never replaces existing files: copy $CHROMA_ENGINE_SRC/pkg over it yourself if you want to update."
+        fi
+    fi
+
+    # 3. Editor config and the Chroma-Fs config, only when the project uses them.
+    recreate_copy_file "$tdir/jsconfig.json" "$RECREATE_ROOT/jsconfig.json"
+    local plugins plugin has_runtime=false
+    plugins="$(json_array "$source_manifest" plugins)"
+    for plugin in $plugins; do
+        [ "$plugin" = "chroma-fs" ] && recreate_copy_file "$tdir/chroma-fs.json" "$RECREATE_ROOT/chroma-fs.json"
+    done
+
+    # 4. Runtime plugins listed in chroma.json (build plugins live inside the engine and need no files).
+    for plugin in $plugins; do
+        if [ -d "$CHROMA_PLUGINS/$plugin" ]; then
+            # plugins/loader.js only matters for plugins loaded at runtime; chroma-style & co. are imported directly.
+            is_build_plugin "$plugin" || has_runtime=true
+            recreate_copy_missing "$CHROMA_PLUGINS/$plugin" "$RECREATE_ROOT/plugins/$plugin"
+        elif ! is_build_plugin "$plugin"; then
+            warn "Plugin '$plugin' is listed in chroma.json but not installed at $CHROMA_PLUGINS/$plugin; skipped."
+        fi
+    done
+    if [ "$has_runtime" = true ]; then
+        recreate_copy_file "$tdir/plugins/loader.js" "$RECREATE_ROOT/plugins/loader.js"
+    fi
+
+    if [ "$RECREATE_CREATED" -eq 0 ]; then
+        ok "Nothing to restore: all Chroma files are already there ($RECREATE_SKIPPED checked, none changed)."
+    elif [ "$RECREATE_DRY" = true ]; then
+        ok "Dry run: $RECREATE_CREATED file(s) would be created, $RECREATE_SKIPPED existing file(s) left alone."
+    else
+        ok "Restored $RECREATE_CREATED file(s); $RECREATE_SKIPPED existing file(s) left untouched."
+        echo "  cd $target && chroma validate"
+    fi
+}
+
 chroma_dev_reload_enabled() {
     local hr
     if [ -f chroma.json ]; then
@@ -1151,6 +1315,7 @@ esac
 case "$_cmd" in
     install) shift; cmd_install "$@" ;;
     new|init) shift; cmd_new "$@" ;;
+    recreate) shift; cmd_recreate "$@" ;;
     dev) shift; cmd_dev "$@" ;;
     preview) shift; cmd_preview "$@" ;;
     serve) shift; cmd_serve "$@" ;;
