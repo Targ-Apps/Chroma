@@ -2,6 +2,12 @@
 
 All notable changes to the Chroma engine and CLI are documented here.
 
+## 0.6.0
+
+- New: `chroma preview --host <ip>` (and `engine preview --host <ip>`) binds another address, for example `0.0.0.0` to serve other machines from a server or a VM. The default stays `127.0.0.1`; a non-loopback address logs a warning because the server has no TLS and no authentication. NorOS uses it to run deployed Chroma apps.
+
+- Fix: without `jq`, `chroma recreate`, `chroma new` and `chroma validate` read the `plugins` array of a multi-line `chroma.json` (they found nothing) and stopped with an error when a key such as `plugins` was absent (`set -e` + `pipefail`). The `json_array` and `json_field` helpers now join lines and treat a missing key as empty. This is what stopped `chroma recreate` inside slim Docker images, which have no `jq`.
+
 ## 0.5.0
 
 - New: `chroma recreate [path] [--template static|dynamic|standard] [--dry-run]` restores the Chroma files a project is missing (`pkg/`, `chroma.json`, `jsconfig.json`, `chroma-fs.json` and the runtime plugins listed in `chroma.json`) from the installed templates and engine. It only adds what is absent: it never overwrites or deletes anything, so project sources are untouched. Meant for fresh clones, deploy targets, and copied sources without `pkg/` or `chroma.json`.

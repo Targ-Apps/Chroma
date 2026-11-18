@@ -274,7 +274,7 @@ usage() {
     _help_kv '--static' 'Same as chroma preview — run chroma build first'
     _help_kv 'Example' 'chroma dev --port 5173'
 
-    _help_cmd 'preview [--port <n>] [--dir <path>]'
+    _help_cmd 'preview [--port <n>] [--dir <path>] [--host <ip>]'
     _help_body 'Serve the build output (outDir) over HTTP like a static host — no hot reload, no injection.'
     _help_kv 'When' 'After chroma build; smoke-test dist/ before upload or handoff'
     _help_kv 'Why' 'Correct MIME types (.wasm, .chr, .xml); same files a static host would serve'
@@ -355,8 +355,8 @@ json_field() {
         jq -er --arg k "$key" '.. | objects | select(has($k)) | .[$k]' "$file" 2>/dev/null | head -1
         return 0
     fi
-    grep -oE '"'"$key"'" *: *("[^"]*"|[0-9.]+|true|false)' "$file" 2>/dev/null | head -1 \
-        | sed -E 's/.*: *"?([^"]*)"?$/\1/'
+    { grep -oE '"'"$key"'" *: *("[^"]*"|[0-9.]+|true|false)' "$file" 2>/dev/null | head -1 \
+        | sed -E 's/.*: *"?([^"]*)"?$/\1/'; } || true
 }
 
 json_array() {
@@ -365,7 +365,8 @@ json_array() {
         jq -er --arg k "$key" '.. | objects | select(has($k)) | .[$k][]' "$file" 2>/dev/null
         return 0
     fi
-    grep -oE '"'"$key"'" *: *\[[^]]*\]' "$file" 2>/dev/null | grep -oE '"[^"]*"' | tail -n +2 | tr -d '"'
+    # Without jq: join lines first so a multi-line array is found; an absent key is not an error (set -e + pipefail).
+    { tr '\n\r\t' '   ' < "$file" 2>/dev/null | grep -oE '"'"$key"'" *: *\[[^]]*\]' | grep -oE '"[^"]*"' | tail -n +2 | tr -d '"'; } || true
 }
 
 warn_legacy_js_in_src() {
@@ -944,10 +945,12 @@ cmd_preview() {
             --port=*) engine_args+=(--port "${1#*=}"); shift ;;
             --dir) [ $# -ge 2 ] || die "--dir needs a value"; engine_args+=(--dir "$2"); shift 2 ;;
             --dir=*) engine_args+=(--dir "${1#*=}"); shift ;;
+            --host) [ $# -ge 2 ] || die "--host needs a value"; engine_args+=(--host "$2"); shift 2 ;;
+            --host=*) engine_args+=(--host "${1#*=}"); shift ;;
             --static) shift ;;
             --no-desktop|--no-hot-reload|--no-reload|--hot-reload|--reload) shift ;;
             *)
-                die "Unknown option for 'chroma preview': $1 (use --port <n> or --dir <path>)"
+                die "Unknown option for 'chroma preview': $1 (use --port <n>, --dir <path> or --host <ip>)"
                 ;;
         esac
     done

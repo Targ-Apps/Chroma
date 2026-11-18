@@ -150,7 +150,7 @@ function Show-Usage {
     Write-HelpKv '--no-desktop' 'Browser only when dev.desktop is true'
     Write-HelpKv '--static' 'Same as chroma preview — run chroma build first'
 
-    Write-HelpCmd 'preview [--port <n>] [--dir <path>]'
+    Write-HelpCmd 'preview [--port <n>] [--dir <path>] [--host <ip>]'
     Write-HelpBody 'Serve the build output (outDir) like a static host — no hot reload, no injection.'
     Write-HelpKv 'When' 'After chroma build; smoke-test dist\ before deploy'
     Write-HelpKv 'Why' 'Correct MIME types; same files a static host would serve'
@@ -553,16 +553,16 @@ function Invoke-ChromaPreview {
     $engineArgs = @("preview")
     for ($i = 0; $i -lt $Arguments.Count; $i++) {
         $arg = $Arguments[$i]
-        if ($arg -eq "--port" -or $arg -eq "--dir") {
+        if ($arg -eq "--port" -or $arg -eq "--dir" -or $arg -eq "--host") {
             if ($i + 1 -ge $Arguments.Count) { Fail "$arg needs a value" }
             $engineArgs += @($arg, $Arguments[$i + 1])
             $i++
-        } elseif ($arg -match '^--(port|dir)=(.*)$') {
+        } elseif ($arg -match '^--(port|dir|host)=(.*)$') {
             $engineArgs += @("--$($Matches[1])", $Matches[2])
         } elseif ($arg -in @("--static", "--no-desktop", "--no-hot-reload", "--no-reload", "--hot-reload", "--reload")) {
             continue
         } else {
-            Fail "Unknown option for 'chroma preview': $arg (use --port <n> or --dir <path>)"
+            Fail "Unknown option for 'chroma preview': $arg (use --port <n>, --dir <path> or --host <ip>)"
         }
     }
 
